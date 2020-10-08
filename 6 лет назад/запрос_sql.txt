@@ -1,0 +1,243 @@
+--Сложность запроса - ниже средней (среди всех тех запросов, которые писали в Ростелеком для отчётов FastReports)
+--Здесь берутся данные по нарядам для абонентов (физ. и юр. лиц) структурного подразделения с id 6069939543
+--и доп. информация о РСЦ (головном подразделении), СП (структурном подразделении), iscorp - физ или юр лицо, account - лицевой счёт,
+--далее: ФИО/Наименование, номер наряда/с листом, дата создания наряда, дата закрытия, опреатор создавший документ (oper_cr_doc), 
+--kp - канал продаж, kk - канал коммуникаций, код и наименование услуги, затем акция (если есть), технология (ustanovka)
+
+ select gg.name as rsc, g.name as sp, u.iscorp, u.account, u.name, nto.num_order||'/'||e.n_lst_ord as numdoc, nto.date_create_order as date_create, l.date_exec
+   ,(select o.name from n_order_life ol, t_operators o where ol.num_list=l.num_list and ol.type_action_id=1 and ol.oper_id=o.oper_id) as oper_cr_doc
+   ,co.value_str as kp
+   ,(select value_str from n_contents_orders where num_list=co.num_list and action_id=co.action_id and str_order='Канал коммуникаций') as kk
+   ,sr.cod||': '||sr.name as svc
+   ,(case when u.iscorp='N' then start_dev.IRK$PSA_OTHER.get_all_akcii_on_ls(u.user_id) else null end) akciya
+   ,(case (select id_cell_svc from t_svc_layer_bunch where id_layer_svc=9 and id_cell_svc in (36100384,36100388,36100386,39670844,42075294) and svc_id=l.id_svc)
+       when 36100384 then 'OTA'
+       when 36100388 then 'Интернет'
+       when 36100386 then 'Интернет'
+       when 39670844 then 'Интернет'
+       when 42075294 then 'ТВ'
+       else null end) ustanovka
+ from n_order_lists l                                                 --листы нарядов
+ join n_titul_order nto on nto.id_titul_order=l.id_titul_order        --заголовок для листов каждого наряда
+ join n_list_exec e on e.num_list=l.num_list                          --закрытые наряды
+ join n_contents_orders co on co.num_list=l.num_list and co.action_id=l.last_action_id                     --содержание наряда
+ join n_spr_pattem sp on sp.num_str=co.num_str and sp.id_titul_pattem=l.id_titul_pattem and sp.id_obj=-165 --выбор по шалону
+ join t_users u on u.user_id=l.user_id and u.dept_id in (6069939543)  --абоненты с ограничением по структурному подразделению
+ join t_gts g on g.dept_id=u.dept_id                                  --структурные подразделения
+ join t_gts gg on gg.dept_id=g.dept_manages                           --для получения головного подразделения (РСЦ)
+ join t_svc_ref sr on sr.svc_id=l.id_svc                              --услуги
+ where l.id_titul_order is not null          --документ является нарадом (содержит общую информацию о наряде)
+   and l.id_condition=4                      --это признак, уже не помню какой (не закрытый наряд, а какой-то другой, то ли созданный, то ли.. забыл какой под цифрой 4
+   and trunc(l.date_exec) between to_date('01.01.2015','dd.mm.yyyy') and to_date('14.01.2015','dd.mm.yyyy')             --огранчиение периода, trunc - отбрасывается время
+   --огранчиение выбора услуг по слою 9 и перечисленным группам услуг, или указанным штучным услугам (с услвоием, что для них в наряде есть одна из указанных связанных услуг)
+   and (l.id_svc in (select svc_id from t_svc_layer_bunch where id_layer_svc=9 and id_cell_svc in (36100384,36100388,36100386,39670844,42075294))  
+        or (l.id_svc=10117 and exists(select 1 from n_contents_orders where num_list=l.num_list and action_id=l.last_action_id and val_id in ('10225','81647','81648','82115','82151','82519','82521','82522','82765','82779')))
+        or (l.id_svc=80401 and exists(select 1 from n_contents_orders where num_list=l.num_list and action_id=l.last_action_id and val_id in ('82089','82090','82091')))
+        or (l.id_svc=101150 and exists(select 1 from n_contents_orders where num_list=l.num_list and action_id=l.last_action_id and val_id in ('10254')))
+        or (l.id_svc=10237 and exists(select 1 from n_contents_orders where num_list=l.num_list and action_id=l.last_action_id and val_id in ('82146','82150','82165','82177','82178','82179')))
+        )
+ order by 1,2,3,10,14,12,4,6
+
+--Запрос в таком компактном виде, мы так привыкли писать, он в растянутом виде был бы довольно длинный и было бы трудно его понимать)
+
+
+
+--Здесь функция для получения данных поля через запятую одним известным методом
+--здесь берётся история изменений тарифных планов для телефонных услуг за период
+--тарифные планы берутся через запятую для каждой услуги
+function get_allTPAPUS (p_user_id in number, p_bid in number) return varchar2
+is
+  list varchar2(1000) := '';
+begin
+  select substr(max(sys_connect_by_path(name,', ')),2) into list from(
+  select row_number() over(order by name) as rn, name 
+   from (select distinct name from(
+         select distinct s.svc_id, ap.name from t_services s, t_apus_plan ap 
+          where s.user_id=p_user_id and s.svctype='0' and s.svc_id<>71998 and s.id_plan<>33849
+            and (s.date_begin between to_date(to_char(p_bid),'yyyymm') and last_day(to_date(to_char(p_bid),'yyyymm')) or
+                 to_date(to_char(p_bid),'yyyymm') between s.date_begin and nvl(s.date_end,sysdate+1))
+            and s.id_plan=ap.id_plan) t
+         where exists(select 1 from cpa_charge where user_id=p_user_id and svc_id=t.svc_id and bid=p_bid and charge_kind='ch' and total>0 and rownum=1)))
+  start with rn=1
+  connect by prior rn=rn-1;
+
+  return list;
+end get_allTPAPUS;
+
+
+
+
+
+
+
+
+--Мы писали и такого типа запросы, но это не самый удачный пример, т.к. запрос не целиком мой, поэтому некоторые вещи там я брал как есть
+--и не могу ясно объяснить как работают, я переделывал его из чужого, приводил в читаемый вид и дописывал, но в общем смысл могу понять
+--не стал подробно в нём разбираться, и комментировать, привёл его просто как пример сложности запросов которые мы писали, и используемых 
+--операторов, но если будет нужно, разберу насколько смогу подробно.
+
+ select name_dept, vidureason, groop, nvl(cnt_users,0) cnt_users from(
+ select name_dept,
+        substr(groop,1,instr(groop,' ')-1) as vid,
+        substr(groop,1,instr(groop,' ')-1) as vidureason,
+        groop,
+        '' orderbyreason,
+        sum(cnt_users) cnt_users
+ from (
+ with --предварительная подготовка некоторых данных, делается выборка в виде представлений, для использования в основном запросе
+      dept as (select dept_id, name name_dept from t_gts where dept_id in (6069939548,6069939514)),
+ 
+      svc as (select (case when num_rate in ('1251','1252','1451','1452') then 'ОТА Новые подключения'
+                           when num_rate in ('1261','1262','1461','1462') then 'ОТА отток'
+                           when num_rate in ('12911','12912','12921','12922','12931','12932','129401','129402','129501','129502','1301','14911','14912','14921','14922','14931','14932','149401','149402','149501','149502','1501') then 'ОТА кол-во абонентов'
+                           when num_rate in ('181211','181212','18122','181220') then 'ТВ Новые подключения'
+                           when num_rate in ('1813') then 'ТВ отток'
+                           when num_rate in ('18141') then 'ТВ кол-во абонентов'
+                           when num_rate in ('19321','19322') then 'xDSL Новые подключения'
+                           when num_rate in ('1933') then 'xDSL отток'
+                           when num_rate in ('1935') then 'xDSL кол-во абонентов'
+                           when num_rate in ('19421','19422') then 'ETTH Новые подключения'
+                           when num_rate in ('1943') then 'ETTH отток'
+                           when num_rate in ('1945') then 'ETTH кол-во абонентов'
+                           when num_rate in ('19521','19522') then 'GPON Новые подключения'
+                           when num_rate in ('1953') then 'GPON отток'
+                           when num_rate in ('1955') then 'GPON кол-во абонентов' end) as groop
+                     ,svc_id, name_svc, line_rate, num_rate, name_rate from (
+              select svc.svc_id,
+                     svc.name name_svc,
+                     to_number(substr(substr(slc.name,1,instr(slc.name,':')-1),1,3)) line_rate,
+                     to_number(substr(slc.name,1,instr(slc.name,':')-1)) num_rate,
+                     substr(slc.name,instr(slc.name,':')+2) name_rate,
+                     svc.izm,
+                     svc.svcunits_id
+              from t_svc_layer_cell slc, t_svc_layer_bunch slb, t_svc_ref svc
+              where slc.id_cell_svc=slb.id_cell_svc
+                    and slc.id_layer_svc=slb.id_layer_svc
+                    and slb.id_layer_svc=45
+                    and slb.svc_id=svc.svc_id
+                    and substr(slc.name,1,1) in ('0','1')
+              union all
+              select svc.svc_id,
+                     svc.name name_svc,
+                     decode(substr(slc.name,1,3),'129',131,151) line_rate,
+                     decode(substr(slc.name,1,3),'129',131,151) num_rate,
+                     'Служебные ОТА' name_rate,
+                     svc.izm,
+                     svc.svcunits_id
+              from t_svc_layer_cell slc, t_svc_layer_bunch slb, t_svc_ref svc
+              where slc.id_cell_svc=slb.id_cell_svc
+                    and slc.id_layer_svc=slb.id_layer_svc
+                    and slb.id_layer_svc=45
+                    and slb.svc_id=svc.svc_id
+                    and substr(slc.name,1,3) in ('129','149'))
+              where num_rate in ('1251','1252','1451','1452', '1261','1262','1461','1462', '12911','12912','12921','12922','12931','12932','129401','129402','129501','129502','1301','14911','14912','14921','14922','14931','14932','149401','149402','149501','149502','1501', '181211','181212','18122','181220', '1813', '18141', '19321','19322', '1933', '1935', '19421','19422', '1943', '1945', '19521','19522', '1953', '1955')
+              ),
+         ut as (select user_type_id, name name_ut from t_user_type_ref where iscorp='N' and coef=1),
+      of_ut as (select user_type_id, name name_ut from t_user_type_ref where iscorp='N' and coef=0)
+ 
+ --далее подразделения, группы услуг (технологии подключения) с кол-вом абонентов на них, с ограничениями по видам услуг (показателям) и типам клиентов
+ select dept.name_dept,
+        svc.groop,
+        count(distinct os.user_id) cnt_users
+ from t_other_svc os, t_saldo sal, t_users u,  svc, ut, dept
+ where os.billing_id=201412
+       and os.svc_id=svc.svc_id
+       and svc.num_rate not in (1703)
+       and sal.user_id=os.user_id
+       and sal.billing_id=201412
+       and ut.user_type_id=sal.user_type_id
+       and dept.dept_id=sal.dept_id
+       and u.user_id=sal.user_id
+ group by dept.name_dept, svc.groop
+ 
+ union all
+ 
+ select dept.name_dept,
+        svc.groop,
+        count(distinct ser.user_id) cnt_users
+ from t_services ser, t_saldo sal, t_users u, svc, ut, dept
+ where last_day(to_date(201412,'yyyymm')) between ser.date_begin and nvl(ser.date_end,last_day(to_date(201412,'yyyymm')))
+       and ser.svc_id=svc.svc_id
+       and svc.line_rate not in (129,130,131,149,150,151)
+       and sal.user_id=ser.user_id
+       and sal.billing_id=201412
+       and ut.user_type_id=sal.user_type_id
+       and dept.dept_id=sal.dept_id
+       and u.user_id=sal.user_id
+ group by dept.name_dept, svc.groop
+ 
+ union all
+ 
+ select dept.name_dept,
+        svc.groop,
+        count(distinct ser.user_id) cnt_users
+ from t_services ser, t_saldo sal, t_users u, svc, ut, dept
+ where last_day(to_date(201412,'yyyymm')) between ser.date_begin and nvl(ser.date_end,last_day(to_date(201412,'yyyymm')))
+       and ser.svc_id=svc.svc_id
+       and svc.line_rate in (129,130,149,150)
+       and sal.user_id=ser.user_id
+       and sal.billing_id=201412
+       and ut.user_type_id=sal.user_type_id
+       and dept.dept_id=sal.dept_id
+       and u.user_id=sal.user_id
+ group by dept.name_dept, svc.groop
+ 
+ union all
+ 
+ select dept.name_dept,
+        svc.groop,
+        count(distinct ser.user_id) cnt_users
+ from t_services ser, t_saldo sal, t_users u, svc, ut, dept
+ where last_day(to_date(201412,'yyyymm')) between ser.date_begin and nvl(ser.date_end,last_day(to_date(201412,'yyyymm')))
+   and ser.svc_id=svc.svc_id
+   and svc.num_rate in (129401,129402,129501,129502,149401,149501)
+   and sal.user_id=ser.user_id
+   and sal.billing_id=201412
+   and ut.user_type_id=sal.user_type_id
+   and dept.dept_id=sal.dept_id
+   and u.user_id=sal.user_id
+   and exists (select 1
+                 from t_apus_view av, nt_modif_set nms, nt_modif_cross_tp mct, nt_modif_set_content msc, nt_modif_range_border mrb, nt_modif_range_value mrv
+                where av.user_id=ser.user_id
+                  and av.phonea=ser.dev_id
+                  and av.billing_id=201412
+                  and nms.svc_type_id=2
+                  and nms.type_use_id=1
+                  and mct.modif_set_id=nms.modif_set_id
+                  and nms.status=2
+                  and mct.key_id=av.plan_id
+                  and mct.modif_set_id=msc.modif_set_id
+                  and mrb.content_id=msc.content_id
+                  and mrb.border_id=mrv.border_id
+                  and mrv.value=0
+                  and last_day(to_date(201412,'yyyymm')) between mct.date_begin and nvl(mct.date_end,last_day(to_date(201412,'yyyymm')))
+                  and av.tarif_dlit/60>mrb.end_range)
+ group by dept.name_dept, svc.groop
+ 
+ union all
+ 
+ --здесь берутся все технологии всех подразделений с кол-вом абонентов 0, 
+ --для того чтобы видеть и те подразделения и технологии по которым нет подключенных абонентов
+ select name_dept, groop, natur_cnt_users from
+  (select 'ОТА Новые подключения' groop, 0 natur_cnt_users from dual union all
+   select 'ОТА отток' groop, 0 natur_cnt_users from dual union all
+   select 'ОТА кол-во абонентов' groop, 0 natur_cnt_users from dual union all
+   select 'ТВ Новые подключения' groop, 0 natur_cnt_users from dual union all
+   select 'ТВ отток' groop, 0 natur_cnt_users from dual union all
+   select 'ТВ кол-во абонентов' groop, 0 natur_cnt_users from dual union all
+   select 'xDSL Новые подключения' groop, 0 natur_cnt_users from dual union all
+   select 'xDSL отток' groop, 0 natur_cnt_users from dual union all
+   select 'xDSL кол-во абонентов' groop, 0 natur_cnt_users from dual union all
+   select 'ETTH Новые подключения' groop, 0 natur_cnt_users from dual union all
+   select 'ETTH отток' groop, 0 natur_cnt_users from dual union all
+   select 'ETTH кол-во абонентов' groop, 0 natur_cnt_users from dual union all
+   select 'GPON Новые подключения' groop, 0 natur_cnt_users from dual union all
+   select 'GPON отток' groop, 0 natur_cnt_users from dual union all
+   select 'GPON кол-во абонентов' groop, 0 natur_cnt_users from dual),
+   (select dept_id, name name_dept from t_gts where dept_id in (6069939548,6069939514))
+ )
+ group by name_dept, substr(groop,1,instr(groop,' ')-1), groop
+)
+ order by n,vid,orderbyreason,groop,name_dept
+
+--сама струткра запроса не сложна, но в деталях он не прост, используется много таблиц и анализируются данные
