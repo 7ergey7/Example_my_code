@@ -1,0 +1,1657 @@
+//большая часть процедур и механизмов заимствованы из основного договора для предприятий. Там всё прокомментированно очень подробно, если будет трудно понять что-то здесь, можно посмотреть                                                                                                                                                        
+//там. Копировать комментарии в каждую формуя не стал. Сложно, если где-то есть небольшие особенности, то тоже они могут не совпасть, а подробно разбирать каждую форму очень трудоёмко и
+//не хватит времени, и зачем если нужно один раз понять процедуру, а для этого достаточно заглянуть в договор. Потом уже комментарии не понадобятся.
+//в самой этой форме сейчас старые комментарии и может быть где-то они не соовтетствуют, когда копировал части кода я мог забыть их исправить, поэтому на них лучше сильнно не ориентироваться.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+//из новых - прокомментировал только диалоговое окно dpZakazVPN и dpSKTV, они есть только в этой форме.                                                                                                                                                                                                                                                                                                              
+  
+//здесь константы, чтобы было удобнее вносить изменения. Текстовые используются подписях к нопкам фильтров (воронка), цветовые - все используемые цвета оформления.
+const c_color1=$77ccff; c_color4=$77CC77; c_color5=$bbffbb;  
+      c_noZ_p2='Нет заявлений с ШПД';    
+      c_noZ_obr='Нет заявлений с'+Chr(10)+'оборудованием на л/с';
+      c_noZ_ktv='Нет заявлений с КТВ';    
+      c_back_ZList='Вернуть полный'+Chr(10)+'список заявлений';
+  
+var Заголовок,вид_контракта,номер_договора,место_заключения,дата_заключения_догов,
+    оператор_в_лице_основание,
+    наим_абонента,абонент_именуем,абонент_действующ,абонент_в_лице,абонент_основание,
+    сумма_контракта,сумма_ндс_контракта,вид_бюджета,   
+    дата_договора_действ,дата_вступ_догов,
+    абонент_адрес,абонент_сп_адрес,
+    телефон_по_расчетам,телефон_бюро_ремонта,
+    филиал_наимен,{филиал_цт_наимен,}филиал_адрес,филиал_юр_адрес,филиал_тел,филиал_факс,филиал_банк_наимен,рс,филиал_банк_кс,филиал_банк_бик,филиал_инн,филиал_кпп,           
+    абонент_юр_адрес,абонент_гос_рег,абонент_банк_наимен,абонент_лс,абонент_банк_рс,абонент_банк_кс,абонент_банк_бик,абонент_инн,абонент_кпп,абонент_элек_почта,абонент_контакт_тел,абонент_факс,
+    реквизиты_оператора,реквизиты_абонента, фио_оператора,фио_абонента,
+    вид_доп_соглашения,дата_приложений,  
+    сер_номер,модель,вид_обр,БУ,сумма_с_НДС,ежемес_с_НДС,сумма_без_НДС,сумма_НДС,итого_с_НДС,итого_без_НДС,итого_НДС,итого_ежемес,итого_колво, //для вывода оборудования в акты
+    стоимость_с_НДС_руб,стоимость_с_НДС_коп,стоимость_с_НДС_прописью_руб,в_тч_НДС_руб,в_тч_НДС_коп,в_тч_НДС_прописью_руб,              
+    t12_date,t12_dd,t12_month,t12_yyyy,t12_rekvizits,t12_abon_okpo,t12_abonent_rekviz,t12np,t12_kolvo,t12_nds_percent,t12_numdoc,
+    punkt4_10,
+    заказ_итого_с_НДС_прописью_руб,заказ_итого_с_НДС_коп        
+    :string;
+    //i: integer;
+    List : TStringList; //только в функции recolorClb  
+  
+    iscreate_arAllZ,isfirst_p2,isfilter_p2,isfirst_obr,isfilter_obr,isfirst_sktv,isfilter_sktv,selected_sktv,isfirst_aktvrab,selected_aktvrab,isSobstNotR,isSobstT12,isArenda,checklist,list_click : Boolean;
+    txt_lFilterZ_obr,txt_lFilterZ_p2,txt_lFilterZ_sktv : String;
+    selected_p2,AllZstr : string;          
+    arAllZ,arZp2,arSobst,arForTorg12,arSobstT12,arArenda,arr_inet_port,arr_inet_tp,arr_inet_ip : array of string;        
+    контент_фильтрация : String;
+    нп,сумма_работ,номер_пп : Integer;                                  
+    тел,тел_предыдущ,технология_шпд,адрес_мпу,дата_начала,тарифный_план_шпд,порт,ип_адрес,вид_оборудования,протокол_передачи : String;        
+    дата_выполнения_работ,наимен_раз_услуги,МПУ_услуги,номер_устройства,сумма_работ_на_сумму,сумма_работ_в_тч_НДС : String;  
+    codi_realiz,codi_arendi : String;                        
+    k,nKSTB : Integer; //k - счётчик для массивов, nKSTB - номер позиции комплектации STB                                                                     
+              
+    qZ,qOL,qPU,qAK,qSAO : TfrxDataSet;
+
+    onlyone : integer;  //чтобы в процедуре обновления записи об оборудовании при редактировании (eChangeOnMouseDown) вызов окошка с заявлением для Торг не получалось дважды (это заплатка, из-за особенностей Fastreport - для выпадающего списка нет процедуры OnMouseDown) - в договоре нет необходимости в этой переменной, т.к. два раза процедура замены не срабатывает из за окошка рассрочки, а в госконтракте немонополисте есть. Здесь я на всякий случай её добавил.
+    СКТВ_едврем_сум,СКТВ_едврем_НДС,СКТВ_едврем_сум_с_НДС, СКТВ_ежемес_сум,СКТВ_ежемес_НДС,СКТВ_ежемес_сум_с_НДС : Double;                                                                                                                                                                        
+  
+procedure ReportOnStartReport(Sender: TfrxComponent);
+begin
+  SetFilter('Листы заявления','');  
+end;
+
+procedure fmMainOnActivate(Sender: TfrxComponent);
+begin
+  codi_realiz:='''805600'',''805601'',''805602'',''805603'',''805604'',''805605'',''81145'',''81340'',''81379'',''81603'',''81604'',''81606'',''81608'',''81609'',''81610'',''81611'',''81613'',''81615'',''81616'',''81617'',''81618'',''81620'',''81621'',''81622'',''81625'',''81707'',''81708'',''81710'',''81711'',''81712'',''81713'',''82124''';
+  codi_arendi:='''81312'',''81314'',''81315'',''81317'',''81318'',''81319'',''81321'',''81341'',''81350''';
+
+  CheckBox21OnClick(DateEdit3);
+    
+  iscreate_arAllZ:=false;  
+  //для действий, которые должны выполняться при первой загрузке окна
+  isfirst_p2:=true; isfirst_obr:=true; isfirst_aktvrab:=true; isfirst_sktv:=true;                                                                                                    
+  //состояние фильтрации списка заявлений
+  isfilter_p2:=false; isfilter_obr:=false; isfilter_sktv:=false; //не фильтрованый
+  //оригинальный текст для кнопки фильтра - нужен чтобы восстанавливать при изменении состояния фильтрации                                                                                                                                                                                             
+  txt_lFilterZ_p2:=lFilterZ_p2.Caption; txt_lFilterZ_obr:=lFilterZ_obr.Caption; txt_lFilterZ_sktv:=lFilterZsktv.Caption;     
+
+  k:=-1;                     //индекс добавленного оборудования в список, для установки флажков п.у.
+  checklist:=false;          //нажатие флажка в списке оборудования (от этого зависит поведение общего флажка и он принудительно снимается/ставится, и этот признак нужен, чтобы не срабатывала процедура общего флажка)                                                                                                                                                                                  
+  list_click:=false;         //нажатие на списке оборудования (тогда начинает копироваться SN и т.д. в строку для редактирования, а если там до этого что-то было, то при замене SN это считается изменением и срабатывает процедура перезаписи строки и т.о. просто от выбора в списке строки заменяются друг другом, этот признак не даёт менять, если было нажатие в списке).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+  pnlDSInet.Color:=c_color1;
+  pnlObrVAkti.Color:=c_color1;
+  pnlZPril.Color:=c_color1;
+end;
+
+//массив отобранных заявлений для заполнения всех списков заявлений по умолчанию, кроме основного списка Z (справа внизу глав. окна). 
+//Z содержит все заявления, нужен для установки курсора на конкретное заявление для выбора данных по нему.
+procedure get_arZ();
+var i : integer;                                              
+begin
+  if iscreate_arAllZ=false then begin
+     SetFilter('Заявления абонента','DATE_CREATE_APPLIC>add_months(sysdate,-3)');      
+     qZ.First; i:=1;
+     while not qZ.eof do begin
+     // if i>15 then break;                          
+       SetLength(arAllZ,i);                                                              
+       arAllZ[i-1]:=<Заявления абонента."Номер заявления">;
+       AllZstr:=AllZstr+','+<Заявления абонента."Номер заявления">;                  
+       i:=i+1;                     
+       qZ.Next;
+     end;
+     List:=TStringList.Create();         
+     delete(AllZstr,1,1);
+     iscreate_arAllZ:=true;                                                
+     SetFilter('Заявления абонента','');      
+  end;               
+end;          
+
+  
+procedure lcbDogOtOnClick(Sender: TfrxComponent);
+begin  
+  mOperLicoOsnova.Lines.Clear;            
+  mOperLicoOsnova.Lines[0]:=<Договор от имени."Наименование">;     
+end;
+
+procedure eAbonNameOnExit(Sender: TfrxComponent);
+begin
+  mAbonLico.Lines[0]:=GetFioInPadeg(eOtAbonName.text,'р');  
+end;
+
+procedure CheckBox22OnClick(Sender: TfrxComponent);
+begin
+  if(CheckBox22.Checked)then begin             
+    DateEdit2.enabled:=true; DateEdit2.Color:=clWindow;                                       
+  end else begin             
+    DateEdit2.enabled:=false; DateEdit2.Color:=clBtnFace;     
+  end;                
+end;
+
+procedure CheckBox21OnClick(Sender: TfrxComponent);
+begin
+  if(CheckBox21.Checked)then begin
+    DateEdit3.enabled:=true; DateEdit3.Color:=clWindow;
+    chbDoPosleZakl.checked:=false; deDoPosleZakl.Enabled:=false; deDoPosleZakl.Color:=clBtnFace;                             
+  end else begin             
+    DateEdit3.enabled:=false; DateEdit3.Color:=clBtnFace;
+  end;                
+end;
+
+procedure chbDoPosleZaklOnClick(Sender: TfrxComponent);
+begin
+  if chbDoPosleZakl.checked then begin deDoPosleZakl.Enabled:=true; deDoPosleZakl.Color:=clWindow;  
+                                       CheckBox21.Checked:=false; DateEdit3.enabled:=false; DateEdit3.Color:=clBtnFace; end
+                            else begin deDoPosleZakl.Enabled:=false; deDoPosleZakl.Color:=clBtnFace; end
+end;
+  
+procedure chbPrilOnClick(Sender: TfrxComponent);
+begin
+  if(chbPril.Checked)then begin             
+    dePril.enabled:=true; dePril.Color:=clWindow;                                       
+  end else begin             
+    dePril.enabled:=false; dePril.Color:=clBtnFace;     
+  end;                
+end;
+
+procedure RadioButton15OnClick(Sender: TfrxComponent);
+begin
+  DateEdit4.Enabled:=False; DateEdit4.Color:=clBtnFace;      
+end;
+  
+procedure RadioButton16OnClick(Sender: TfrxComponent);
+begin
+  DateEdit4.Enabled:=True;      
+end;  
+    
+procedure CheckBox10OnClick(Sender: TfrxComponent);
+begin
+  if (CheckBox10.Checked) then begin                           
+    GroupBox1.enabled:=false;
+
+    GroupBox9.enabled:=false;
+    GroupBox9.font.color:=clBtnShadow;
+    Label10.font.color:=clBtnShadow;
+    Label21.font.color:=clBtnShadow;
+    ComboBox3.enabled:=false;
+    ComboBox4.enabled:=false;
+
+    eSumNDS.enabled:=false;    
+    Label28.font.color:=clBtnShadow;
+      
+    DateEdit2.enabled:=false;        
+    DateEdit3.enabled:=false;
+    if (RadioButton16.Checked) then                       
+        DateEdit4.enabled:=true;              
+    CheckBox22.enabled:=false;
+    CheckBox21.enabled:=false;
+      
+    GroupBox1.font.color:=clBtnShadow;
+
+    CheckBox17.enabled:=true;          
+    end else begin
+      GroupBox1.enabled:=true;
+
+      GroupBox9.enabled:=true;
+      GroupBox9.font.color:=clWindowText;
+      Label10.font.color:=clWindowText;
+      Label21.font.color:=clWindowText;
+      ComboBox3.enabled:=true;
+      ComboBox4.enabled:=true;
+
+      eSumNDS.enabled:=true;    
+      Label28.font.color:=clWindowText;          
+  
+      DateEdit2.enabled:=true;
+      DateEdit3.enabled:=true;
+      DateEdit4.enabled:=true;          
+      CheckBox22.enabled:=true;
+      CheckBox21.enabled:=true;                  
+
+      GroupBox1.font.color:=clWindowText;                                    
+    end;              
+end;
+
+
+      
+{************************************}
+{*** Проверка перед печатью формы ***}{*** Пока здесь не проверка, а формируются массивы для оборудования в собственность и в аренду ***}                                                                                                                                                                                                                                                 
+{************************************}
+procedure Button1OnMouseDown(Sender: TfrxComponent; Button: TMouseButton; Shift: Integer; X, Y: Integer);
+var i, cs,cst,ca : integer;
+    s, str, mesR : string;                                            
+begin
+  //Button1.ModalResult:=mrOK;
+  SetLength(arSobst,0); SetLength(arSobstT12,0); SetLength(arArenda,0);             
+  i:=0; s:=''; str:=''; cs:=0; ca:=0; cst:=0;                                                                                         
+  while i<clbOborud.Items.Count do begin                   //перебор всего списка                                              
+    if clbOborud.Checked(i) then begin                     //если оборудование выбрано (его хотят в акт п/п)                                                                                                                                                                                                              
+       s:=clbOborud.Items[i]; str:=s; delete(s,1,Pos('|',s)); delete(s,1,Pos('|',s)); delete(s,1,Pos('|',s)+2); //+2 - это поле БУ
+       s:=trim(Copy(s,1,Pos('|',s)-1));                                                 
+       if (s='в собств.') or (s='торг 12') then begin {if (s='в собств.') then} isSobstNotR:=true; SetLength(arSobst,cs+1); arSobst[cs]:=str; cs:=cs+1; end; //и оно в собственность - это для вывода части в собственность в договоре к-п       
+       if s='торг 12' then begin 
+          isSobstT12:=true; SetLength(arSobstT12,cst+1); arSobstT12[cst]:=arForTorg12[i]+'|'+str; cst:=cst+1; //сюда могут попасть и пустые значения заявлений, если пользователь добавлял оборудование вручную (кнопкой +) и потом, когда менял значение поля "Акт п/п" на "торг 12" и во всплывающем окошке не указал номер заявления. Если есть пусты, то это не важно, при выводе Торга это анализируется.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+       end;
+       if s='в аренду' then begin isArenda:=true; SetLength(arArenda,ca+1); arArenda[ca]:=str; ca:=ca+1; end;    
+    end;                                                                                                                                                                                                                                                                                                                                                      
+    i:=i+1;
+  end;
+end;
+
+
+
+procedure Button1OnClick(Sender: TfrxComponent);
+var i,j : Integer;
+begin
+  номер_договора:=<Абонент."Номер договора">;
+    
+  телефон_по_расчетам:=ePhoneBill.Text;        
+  телефон_бюро_ремонта:=ePhoneCBR.Text;  
+
+  pDogovor.Visible:=CheckBox3.checked;                                                                          
+
+  mdNoSpec.Visible:=not CheckBox17.Checked;
+  mdSpec.Visible:=CheckBox17.Checked;
+    
+  вид_контракта:=UpperCase(ComboBox7.Text);
+  Заголовок:=вид_контракта+' КОНТРАКТ № '+номер_договора+Chr(10)+' об оказании услуг ';            
+  if cbUslugi.Text='Интернет' then Заголовок:=Заголовок+'сети широкополосного доступа юридическому лицу,'+Chr(10)+'финансируемому из соответствующего бюджета';                                                             
+  if cbUslugi.Text='Прочие'   then Заголовок:=Заголовок+'электросвязи юридическому лицу,'+Chr(10)+'финансируемому из соответствующего бюджета';
+  if вид_контракта='' then вид_доп_соглашения:='' else
+  if вид_контракта='ГОСУДАРСТВЕННЫЙ' then вид_доп_соглашения:='Государственному ' else
+  if вид_контракта='МУНИЦИПАЛЬНЫЙ' then вид_доп_соглашения:='Муниципальному ';                            
+
+  дата_приложений:=DateToStr(dePril.Date)+'г.';                                                                                                        
+    
+  if (RadioButton1.Checked) then begin
+    //филиал_наимен:=<Филиал."Наименование филиала">;
+    //филиал_цт_наимен:='';        
+    филиал_адрес:=<Филиал."Адрес">;
+    //филиал_юр_адрес:=<Филиал."Адрес">;                
+    филиал_тел:=<Филиал."Тел Юридического местоположения">;
+    филиал_инн:=<Филиал."ИНН">;        
+    филиал_кпп:=<Филиал."КПП">;            
+    филиал_банк_наимен:=<Филиал."Банк">;
+    филиал_банк_кс:=<Филиал."К/С">;
+    филиал_банк_бик:=<Филиал."БИК Банка">;  
+    end else begin
+      //филиал_наимен:=<СП Абонента."Наименование филиала">;
+      //if (<СП Абонента."Наименование филиала">=<Филиал."Наименование филиала">) then
+      //  филиал_цт_наимен:=''                                       
+      //  else филиал_цт_наимен:=chr(13)+<СП Абонента."Наименование ЦТ">;
+      филиал_адрес:=<СП Абонента."Адрес">;
+      //филиал_юр_адрес:=<СП Абонента."Адрес">;          
+      филиал_тел:=<СП Абонента."Тел Юридического местоположения">;
+      филиал_инн:=<СП Абонента."ИНН">;          
+      филиал_кпп:=<СП Абонента."КПП">;               
+      филиал_банк_наимен:=<СП Абонента."Банк">;
+      филиал_банк_кс:=<СП Абонента."К/С">;
+      филиал_банк_бик:=<СП Абонента."БИК Банка">;                 
+    end;
+    филиал_наимен:='Иркутский филиал ОАО "Ростелеком"';        
+    if pos('ИРКУТСКАЯ ОБЛАСТЬ ОБЛ.',филиал_адрес)>0 then delete(филиал_адрес,pos(' ОБЛ.',филиал_адрес),5);
+    филиал_факс:=eFax.Text;
+    абонент_контакт_тел:=trim(<ДопИнфо по абоненту."Контактный телефон">); if абонент_контакт_тел='' then абонент_контакт_тел:='                         ';                                                          
+      
+  if not (CheckBox10.Checked) then begin       
+     абонент_именуем:=eAbonImenuem.Text;
+     абонент_действующ:=eAbonDeystv.Text;                                      
+     
+     mdSposob_dostavki_pochta.Visible:=false;
+     mdSposob_dostavki_poluch_abonentom.Visible:=false;           
+     case ComboBox4.ItemIndex of  
+       0: begin mdSposob_dostavki_pochta.Visible:=true; end;
+       1: begin mdSposob_dostavki_poluch_abonentom.Visible:=true; end;           
+     end;
+       
+     if (eSumNDS.Text<>'') then begin                   
+       сумма_контракта:=eSumNDS.Text;     
+       сумма_ндс_контракта:=FloatToStr(Round(StrToFloat(сумма_контракта)/118*18*100)/100);             
+     end else begin
+       сумма_контракта:='_____________________';
+       сумма_ндс_контракта:='_____________________';                                     
+     end;
+       
+     if (eAbonName.Text<>'') then         
+       наим_абонента:=eAbonName.Text;
+     if (eOtAbonName.Text<>'') then           
+       фио_абонента:=eOtAbonName.Text;
+     фио_оператора:=<Пользователи АСР Старт."Наименование">;
+       
+     if(CheckBox22.Checked)then           
+       дата_заключения_догов:=DateToStr(DateEdit2.Date);
+         
+     if (mOperLicoOsnova.Lines.Text<>'') then         
+       оператор_в_лице_основание:=mOperLicoOsnova.Lines.Text;
+     if (mAbonLico.Lines.Text<>'') then           
+       абонент_в_лице:=eAbonDolzh.Text+' '+mAbonLico.Lines.Text;           
+     if (eAbonOsnova.Text<>'') then             
+       абонент_основание:=eAbonOsnova.Text;
+     место_заключения:=<Абонент."НасПункт Абонента">;
+     if (RadioButton15.Checked) then                                          
+       дата_договора_действ:='неопределенный срок'      
+       else дата_договора_действ:='по '+DateToStr(DateEdit4.Date);
+     if (ComboBox3.Text<>'') then  
+       вид_бюджета:=ComboBox3.Text;             
+
+     if (<ДопИнфо по абоненту."Л/С УФК"><>'') then                                          
+       абонент_лс:='УФК '+<ДопИнфо по абоненту."Л/С УФК">
+       else абонент_лс:=<Абонент."Номер л/с">;                      
+     if (<Абонент."Адрес"><>'') then           
+       абонент_адрес:=<Абонент."Адрес">;
+
+     if (<Абонент."Юр. адрес"><>'') then
+       абонент_юр_адрес:=<Абонент."Юр. адрес">;                     
+    
+
+     абонент_элек_почта:=trim(<ДопИнфо по абоненту."СД:Email">); if абонент_элек_почта='' then абонент_элек_почта:=<ДопИнфо по абоненту."Email">;  
+     if (<СП Абонента."Адрес"><>'') then           
+       абонент_сп_адрес:=<СП Абонента."Адрес">;
+     if (trim(<ДопИнфо по абоненту."Гос.Регистрация:Серия">+' '+<ДопИнфо по абоненту."Гос.Регистрация:Номер">+' '+<ДопИнфо по абоненту."Гос.Регистрация:Дата">+' '+<ДопИнфо по абоненту."Гос.Регистрация:Выдано">)<>'') then                  
+       абонент_гос_рег:=trim(<ДопИнфо по абоненту."Гос.Регистрация:Серия">+' '+<ДопИнфо по абоненту."Гос.Регистрация:Номер">+' '+<ДопИнфо по абоненту."Гос.Регистрация:Дата">+' '+<ДопИнфо по абоненту."Гос.Регистрация:Выдано">);
+     if (<ДопИнфо по абоненту."Факс"><>'') then                    
+       абонент_факс:=<ДопИнфо по абоненту."Факс">;
+     if (<Абонент."ИНН"><>'') then       
+       абонент_инн:=<Абонент."ИНН">;
+     if (<Абонент."КПП"><>'') then           
+       абонент_кпп:=<Абонент."КПП">;
+     if (<Абонент."Банк"><>'') then           
+       абонент_банк_наимен:=<Абонент."Банк">;
+     if (<Абонент."Р/С"><>'') then           
+       абонент_банк_рс:=<Абонент."Р/С">;
+     if (<Абонент."К/C"><>'') then           
+       абонент_банк_кс:=<Абонент."К/C">;
+     if (<Абонент."БИК"><>'') then           
+       абонент_банк_бик:=<Абонент."БИК">;
+
+   end;
+   рс:='р/с '+<Получатель платежа."Р/С">;                       
+                                      
+   реквизиты_оператора:=филиал_наимен+Chr(10)+      
+                        '(наименование филиала Оператора)'{+филиал_цт_наимен}+Chr(10)+  
+                        филиал_адрес+Chr(10)+    
+                        '(почтовый адрес Оператора для переписки по настоящему Договору)'+Chr(10)+    
+                        'Юридический адрес: '+филиал_юр_адрес+Chr(10)+  
+                        'Телефон: '+филиал_тел+Chr(10)+
+                        'Банк, обслуживающий счета (филиала Оператора), '+филиал_банк_наимен+Chr(10)+
+                        рс+Chr(10)+  
+                        'к/с '+филиал_банк_кс+Chr(10)+
+                        'БИК '+филиал_банк_бик+Chr(10)+  
+                        'ИНН '+филиал_инн+', КПП '+филиал_кпп+Chr(10)+  
+                        'Сайт Оператора: www.rt.ru';                                   
+                           
+   реквизиты_абонента:='Фирменное наименование: '+наим_абонента+Chr(10)+  
+                       'Юридический адрес: '+абонент_юр_адрес+Chr(10)+
+                       'Свидетельство о регистрации (номер свидетельства, дата гос.регистрации, кем зарегистрирован):'+Chr(10)+  
+                       абонент_гос_рег+Chr(10)+  
+                       'Банковские реквизиты: Банк, обслуживающий счета, '+абонент_банк_наимен+Chr(10)+
+                       'Лицевой счет '+абонент_лс+Chr(10)+
+                       'р/с '+абонент_банк_рс+Chr(10)+
+                       'к/с '+абонент_банк_кс+Chr(10)+
+                       'БИК '+абонент_банк_бик+Chr(10)+  
+                       'ИНН '+абонент_инн+' КПП '+абонент_кпп+Chr(10)+
+                       'Электронный адрес: '+абонент_элек_почта+Chr(10)+
+                       'Контактный телефон: '+абонент_контакт_тел+' факс '+абонент_факс;                              
+  
+   if selected_p2<>'' then begin pInet.Visible:=true;
+      if selected_p2='по заявлению' then begin
+         i:=0; j:=0;                                    
+         while i<clbZP2.Items.Count do begin                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+           if clbZP2.Checked(i) then begin setLength(arZp2,j+1); arZp2[j]:=clbZP2.Items.strings(i); j:=j+1; end;                                                             
+           i:=i+1;                    
+         end;
+      end;               
+   end;
+   if (pnlObrVAkti.Color=c_color5) then begin   
+      if (isSobstNotR) or (isSobstT12) then begin                               
+         pDogKupProd.Visible:=true; pAktppS.Visible:=true; mdAktppS.RowCount:=Length(arSobst);
+         mdOS_h.Visible:=true; mdOS_d.Visible:=true; mdOS_i.Visible:=true; mdOS_d.RowCount:=Length(arSobst);               
+      end;
+      if (isSobstT12) then begin
+         //i:=0; j:=Length(arSobst);         //решили выводить всё в ДКП и в Акт п/п и для Торга в Торг. поэтому отключил пока этот код.                                                                                                                                                                                                                                                                  
+         //while i<Length(arSobstT12) do begin
+         //  SetLength(arSobst,j+1);             
+         //  arSobst[j]:=arSobstT12[i];  //все элементы Торг12 копируются обязательно в конец массива оборудования в собственность. Зачем это нужно? Т.к. кол-во строк в Договоре КП было выше                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+         //  i:=i+1; j:=j+1;          //установлено = размерности в собственность, то туда попадёт только это оборудование, а дописанное в конце из Торг12 - попадёт в Акт п/п в собст.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+         //end;                       //а если в конец не дописать, или дописать не в конец, то получится фигня... либо в акт не попадёт, либо в ДКП попадёт не то оборудование.                                                                                                                                                                                                                                                                                                                                
+         pTorg12.Visible:=true; //pAktppS.Visible:=true; if (isSobstNotR) then mdAktppS.RowCount:=Length(arSobst) else mdAktppS.RowCount:=Length(arSobstT12);                  
+         t12_date:=DateToStr(dePril.Date);  
+         t12_dd:=Copy(t12_date,1,2);
+         case Copy(t12_date,4,2) of
+           '01': t12_month:='Январь';
+           '02': t12_month:='Февраль';                                              
+           '03': t12_month:='март';                                                                                                               
+           '04': t12_month:='Апрель';                                              
+           '05': t12_month:='Май';                                              
+           '06': t12_month:='Июнь';                                              
+           '07': t12_month:='Июль';                                              
+           '08': t12_month:='Август';                                              
+           '09': t12_month:='Сентябрь';                                              
+           '10': t12_month:='Октябрь';                                              
+           '11': t12_month:='Ноябрь';                                              
+           '12': t12_month:='Декабрь';
+         end;                 
+         t12_yyyy:=Copy(t12_date,7,4);
+         t12_rekvizits:='Иркутский филиал ОАО "Ростелеком", 664011 г.Иркутск, ул.Пролетарская,12, ИНН 7707049388, КПП 380843001,'+Chr(10)+
+                        'р/с '+<Получатель платежа."Р/С">+' в Иркутский филиал ОАО АКБ "СВЯЗЬ-БАНК", БИК 042520784, корр/с 30101810700000000784';      
+         t12_abon_okpo:=<Абонент."ОКПО">;
+         t12_abonent_rekviz:=наим_абонента+', ИНН '+филиал_инн+' КПП '+филиал_кпп+' р/с '+абонент_банк_рс+' Банк '+trim(филиал_банк_наимен)+' БИК '+филиал_банк_бик;      
+      end;
+      if (isArenda) then begin pDSA.Visible:=true; pAktppA.Visible:=true; mdOAktppA.RowCount:=Length(arArenda); end;                                                          
+   end;
+   if (pnlZPril.Color=c_color5) then begin
+      if selected_aktvrab then begin pAktVipRab.Visible:=true; end;                                      
+   end;
+   if (selected_sktv) then begin
+     pSKTVZakaz.Visible:=true; pSKTVPril.visible:=true;                                                                                                     
+   end;
+  
+   if CheckBox21.checked then begin дата_вступ_догов:=DateToStr(DateEdit3.Date); 
+      punkt4_10:='Настоящий Контракт вступает в силу с '+дата_вступ_догов+' и действует '+дата_договора_действ+', а в части оплаты услуг до выполнения денежных обязательств.'; 
+   end else
+   if chbDoPosleZakl.checked then begin дата_вступ_догов:=DateToStr(deDoPosleZakl.Date);
+      punkt4_10:='Настоящий Контракт вступает в силу с даты подписания, распространяет свое действие на отношения, возникшие с '+дата_вступ_догов+' и действует '+дата_договора_действ+', а в части оплаты услуг до выполнения денежных обязательств.';
+   end else punkt4_10:='Настоящий Контракт вступает в силу с "___" _____________ 20___г. и действует '+дата_договора_действ+', а в части оплаты услуг до выполнения денежных обязательств.';
+end;
+
+
+  
+{*** Замена фона для CheckListBox-ов - фон перекрашивается не весь а только там где флажки - некрасиво, весь только когда список пуст, поэтому: ***}        
+procedure recolorClb(obj : TfrxCheckListBoxControl; p_color : Integer);
+var i : integer;                                   
+begin
+  if obj.Items.Count>0 then begin
+     List.Clear();
+     i:=0; while i<obj.Items.Count do begin List.Add(obj.Items.Strings(i)); i:=i+1 end; //переносим всё в список и очищаем CheckListBox
+     obj.Items.Clear();
+     obj.Color:=p_color;                                                                //красим
+     i:=0; while i<List.Count do begin obj.Items.Add(List.Strings(i)); i:=i+1 end;      //переносим из списка всё обратно
+  end
+  else obj.Color:=p_color;                                                              //а если списко и так пуст, то просто меняем фон                             
+end;  
+//для ДС                                                        
+procedure bbDSInetOnClick(Sender: TfrxComponent);
+begin
+  dpInetZ.ShowModal;
+end;
+//для печати альбомных с портретными в П1, П2                                                                                                         
+procedure bbHelp1OnClick(Sender: TfrxComponent);
+begin
+  dpHelp1.ShowModal;
+end;
+procedure dpHelp1OnActivate(Sender: TfrxComponent);
+begin
+  dpHelp1.Color:=c_color4;
+  h1l0.Color:=c_color4;            
+end;
+{*** нажатие флажка П2 - доступен список ***}                                                                                            
+procedure chbP2OnClick(Sender: TfrxComponent);
+begin
+  if chbP2.checked then begin
+     cbP2.Color:=clWindow; cbP2.Enabled:=true;      
+     if (cbP2.Text='по заявлению') then begin recolorClb(clbZP2,clWindow); clbZP2.Enabled:=true; bbFilterZ_p2.Enabled:=true; lFilterZ_p2.Enabled:=true; end;                      
+  end else begin
+     cbP2.Color:=clBtnFace; cbP2.Enabled:=false; recolorClb(clbZP2,clBtnFace); clbZP2.Enabled:=false; bbFilterZ_p2.Enabled:=false; lFilterZ_p2.Enabled:=false;                        
+  end;            
+end;
+{*** выбор в списке, если "по заявлению", то заполняется и доступен список заявлений с фильтрацией, иначе всё это серое. ***}                                                                                                                                                                                                                                                                                            
+procedure cbP2OnClick(Sender: TfrxComponent);
+var i : Integer;  
+begin
+  if cbP2.Text='по заявлению' then begin                                                                   
+     if isfirst_p2 then begin 
+        isfirst_p2:=false; 
+        get_arZ(); 
+        i:=0; while i<length(arAllZ) do begin clbZP2.Items.Add(arAllZ[i]); i:=i+1; end; 
+     end;
+     recolorClb(clbZP2,clWindow); clbZP2.Enabled:=true; bbFilterZ_p2.Enabled:=true; lFilterZ_p2.Enabled:=true;
+  end               
+  else begin recolorClb(clbZP2,clBtnFace); clbZP2.Enabled:=false; bbFilterZ_p2.Enabled:=false; lFilterZ_p2.Enabled:=false; end;                                 
+end;
+{*** нажатие на фильтре ***}                                                  
+procedure bbFilterZ_p2OnClick(Sender: TfrxComponent);
+var str : string;                             
+    i : integer;
+begin
+  clbZP2.Items.Clear();                                     
+  if isfilter_p2=false then begin
+     str:='';                                    
+     i:=0;
+     while i<length(arAllZ) do begin
+       Z.KeyValue:=arAllZ[i];                                                           
+       SetFilter('Листы заявления','ID_CELL_SVC IN (-101,-10101,-102,-10201) or SVC_ID=55552');
+       qOL.First;
+       while not qOL.eof do begin                                                                 
+         str:='заявления с ШПД на л/с есть';      
+         clbZP2.Items.Add(<Заявления абонента."Номер заявления">);
+         qOL.Next;                              
+       end;                 
+       SetFilter('Листы заявления','');                                                         
+       i:=i+1;              
+     end;                                           
+     if str='' then begin bbFilterZ_p2.Enabled:=false; lFilterZ_p2.Caption:=c_noZ_p2; lFilterZ_p2.Color:=clYellow; end
+               else begin bbFilterZ_p2.Glyph:=bb2.Glyph; lFilterZ_p2.Caption:=c_back_ZList; isfilter_p2:=true; end;                                         
+  end
+  else begin
+     i:=0;                 
+     while i<length(arAllZ) do begin                                                                
+       clbZP2.Items.Add(arAllZ[i]);
+       i:=i+1;                       
+     end;
+     bbFilterZ_p2.Glyph:=bb1.Glyph; lFilterZ_p2.Caption:=txt_lFilterZ_p2;                        
+     isfilter_p2:=false;                       
+  end;            
+end;
+{*** при закрытии окна для П1 и П2 меняется тект и подсветка кнопки ***}        
+procedure dpInetZOnHide(Sender: TfrxComponent);
+var i : Integer;                                             
+begin
+  selected_p2:='';    //Акт и заявление не выбраны
+  if chbP2.checked then
+     if (cbP2.Text='по л/с') then selected_p2:='по л/с' else           
+     if (cbP2.Text='по заявлению') then begin
+        i:=0;
+        while i<clbZP2.Items.Count do begin                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+          if clbZP2.Checked(i) then begin selected_p2:='по заявлению'; break; end;                                                             
+          i:=i+1;                    
+        end;
+     end;               
+  if (selected_p2<>'') then begin bbDSInet.Caption:='  ДС на интернет (выбраны)'; pnlDSInet.Color:=c_color5; end 
+                       else begin bbDSInet.Caption:='ДС на интернет (не выбраны)'; pnlDSInet.Color:=c_color1; end;
+  if chbIsContentFiltr.checked then контент_фильтрация:='ДА' else контент_фильтрация:='';                                                                                                                                      
+end;
+
+
+
+
+
+  
+{*****************************************************************}
+{*** Диалоговое окно выбора  выбора оборудования для Актов п/п ***}
+{*****************************************************************}
+//для Актов п/п                                
+procedure bbOborudVAktiOnClick(Sender: TfrxComponent);
+begin
+  dpOborudVAkti.ShowModal;
+end;
+//по выбору оборудования в Акты п/п                                                                                       
+procedure bbHelp2OnClick(Sender: TfrxComponent);
+begin
+  dpHelp2.ShowModal;
+end;
+procedure dpHelp2OnActivate(Sender: TfrxComponent);
+begin
+  dpHelp2.Color:=c_color4;
+  h3l1.Color:=c_color4;            
+  h3l2.Color:=c_color4;            
+  h3l3.Color:=c_color4;            
+  h3l4.Color:=c_color4;            
+  h3l5.Color:=c_color4;            
+  h3l6.Color:=c_color4;            
+  h3l7.Color:=c_color4;            
+  h3l8.Color:=c_color4;            
+  h3l9.Color:=c_color4;            
+  h3l10.Color:=c_color4;            
+  h3l11.Color:=c_color4;            
+  h3l12.Color:=c_color4;            
+  h3l13.Color:=c_color4;            
+  h3l14.Color:=c_color4;                                          
+  h3l15.Color:=c_color4;            
+  h3l16.Color:=c_color4;            
+end;
+{*** Первая загрузка окна выбора оборудования для Актов п/п ***}       
+procedure dpOborudVAktiOnActivate(Sender: TfrxComponent);
+var i : Integer;                                     
+begin
+  if isfirst_obr then begin                                  
+     isfirst_obr:=false;
+
+     //создание  массива и заполнение им списка заявлений
+     get_arZ();
+     i:=0;                 
+     while i<length(arAllZ) do begin                                                                  
+       cbZ_obr.Items.Add(arAllZ[i]);
+       i:=i+1;                       
+     end;               
+    
+     //заполнение списка оборудования
+     cbModel.Items.Add('===========< Общие виды оборудования');                                                      
+     cbModel.Items.Add('ONT – модем');
+     cbModel.Items.Add('ADSL – модем');
+     cbModel.Items.Add('Приставка STB');
+     cbModel.Items.Add('Коммутатор DIR');
+     cbModel.Items.Add('');                                                      
+     SetFilter('Справочник (Активное оборудование)','note like ''%SN=%;SY=%'' and (case r.class_id when 91911022 then 0 when 10035475567 then 1 when 10035477215 then 2 when 89731856 then 3 when 10035475572 then 4 when 10035475503 then 5 when 89731888 then 6 when 10035475502 then 7 when 10035475568 then 8 when 98715616 then 9 else 0 end)=0');                                                            
+     cbModel.Items.Add('============================< Модемы');                                                      
+     qSAO.First;
+     while not qSAO.eof do begin
+       cbModel.Items.Add(<Справочник (Активное оборудование)."Оборудование">);
+       qSAO.Next;
+     end;                           
+     SetFilter('Справочник (Активное оборудование)','note like ''%SN=%;SY=%'' and (case r.class_id when 91911022 then 0 when 10035475567 then 1 when 10035477215 then 2 when 89731856 then 3 when 10035475572 then 4 when 10035475503 then 5 when 89731888 then 6 when 10035475502 then 7 when 10035475568 then 8 when 98715616 then 9 else 0 end)=2');                                                            
+     cbModel.Items.Add('');                                                      
+     cbModel.Items.Add('========================< ONT модемы');                                                      
+     qSAO.First;
+     while not qSAO.eof do begin
+       cbModel.Items.Add(<Справочник (Активное оборудование)."Оборудование">);
+       qSAO.Next;
+     end;                           
+     SetFilter('Справочник (Активное оборудование)','note like ''%SN=%;SY=%'' and (case r.class_id when 91911022 then 0 when 10035475567 then 1 when 10035477215 then 2 when 89731856 then 3 when 10035475572 then 4 when 10035475503 then 5 when 89731888 then 6 when 10035475502 then 7 when 10035475568 then 8 when 98715616 then 9 else 0 end)=6');                                                            
+     cbModel.Items.Add('');                                                      
+     cbModel.Items.Add('=======================< Коммутаторы');                                                      
+     qSAO.First;
+     while not qSAO.eof do begin
+       cbModel.Items.Add(<Справочник (Активное оборудование)."Оборудование">);
+       qSAO.Next;
+     end;                           
+     SetFilter('Справочник (Активное оборудование)','note like ''%SN=%;SY=%'' and (case r.class_id when 91911022 then 0 when 10035475567 then 1 when 10035477215 then 2 when 89731856 then 3 when 10035475572 then 4 when 10035475503 then 5 when 89731888 then 6 when 10035475502 then 7 when 10035475568 then 8 when 98715616 then 9 else 0 end)=3');                                                            
+     cbModel.Items.Add('');                                                      
+     cbModel.Items.Add('===============================< STB');                                                      
+     qSAO.First;
+     while not qSAO.eof do begin
+       cbModel.Items.Add(<Справочник (Активное оборудование)."Оборудование">);
+       qSAO.Next;
+     end;                                
+     SetFilter('Справочник (Активное оборудование)','note like ''%SN=%;SY=%'' and (case r.class_id when 91911022 then 0 when 10035475567 then 1 when 10035477215 then 2 when 89731856 then 3 when 10035475572 then 4 when 10035475503 then 5 when 89731888 then 6 when 10035475502 then 7 when 10035475568 then 8 when 98715616 then 9 else 0 end)=9');                                                            
+     cbModel.Items.Add('');                                                      
+     cbModel.Items.Add('======================< Видеосендеры');                                                      
+     qSAO.First;
+     while not qSAO.eof do begin
+       cbModel.Items.Add(<Справочник (Активное оборудование)."Оборудование">);
+       qSAO.Next;
+     end;                              
+     SetFilter('Справочник (Активное оборудование)','');
+     qSAO.First;
+     cbModel.Items.Add('');                                                                                                                             
+     cbModel.Items.Add('=====================< Комплектующие');                                                      
+     cbModel.Items.Add('Кабель 3хRCA');
+     cbModel.Items.Add('Кабель HDMI');
+     cbModel.Items.Add('Кабель Mini Jack - RCA');
+     cbModel.Items.Add('Конвертор RCA-SCART');
+     cbModel.Items.Add('Патч-корд Ethernet');
+     cbModel.Items.Add('Пульт дистанционного управления');
+  end;                                                                                                                                                                                       
+  isSobstNotR:=false; isArenda:=false; isSobstT12:=false; onlyone:=0;                                            
+end;
+{*** фильтр по заявлениям с оборудованием ***}           
+procedure bbFilterZ_obrOnClick(Sender: TfrxComponent);
+var str, codraz : String;
+    i : Integer;                                              
+begin
+  cbZ_obr.Items.Clear();                           
+  if isfilter_obr=false then begin
+     str:='';                                    
+     SetFilter('Заявления абонента','NUM_APPLIC in ('+AllZstr+')');  
+     qZ.First;         
+     while not qZ.eof do begin
+       qOL.First;       
+       while not qOL.eof do begin      
+         codraz:=<Листы заявления."Раз.услуга Код">;        
+         if (pos('GEN',trim(<Содержание листа."Примечание">))>0) or (pos('АУ=',trim(<Содержание листа."Примечание">))>0) or (codraz='805600') or (codraz='805601') or (codraz='805602') or (codraz='805603') or (codraz='805604') or (codraz='805605') then begin 
+            str:='заявления с оборудованием на л/с есть';      
+            cbZ_obr.Items.Add(<Заявления абонента."Номер заявления">);
+            break;                          
+         end;
+         qOL.Next;
+       end;
+       qZ.Next;
+     end;
+     SetFilter('Заявления абонента','');                                                         
+     if str='' then begin bbFilterZ_obr.Enabled:=false; lFilterZ_obr.Caption:=c_noZ_obr; lFilterZ_obr.Color:=clYellow; end
+               else begin bbFilterZ_obr.Glyph:=bb2.Glyph; lFilterZ_obr.Caption:=c_back_ZList; isfilter_obr:=true; end;                                         
+  end
+  else begin
+     i:=0;                 
+     while i<length(arAllZ) do begin                                                                
+       cbZ_obr.Items.Add(arAllZ[i]);
+       i:=i+1;                       
+     end;
+     bbFilterZ_obr.Glyph:=bb1.Glyph; lFilterZ_obr.Caption:=txt_lFilterZ_obr;                        
+     isfilter_obr:=false;                       
+  end;            
+end;
+{*** Выбор оборудования из заявления ***}
+//функции для извлечения из доп инфо серийного номера, марки модема и суммы для заполнения Актов ПП и вып работ                                                                                                                                                                                                                                                      
+function get_sn(p_str: String):String;
+begin Result:=trim(copy(p_str,pos('АУ=',p_str)+3,pos(';',copy(p_str,pos('АУ=',p_str)+3,length(p_str)-pos('АУ=',p_str)-2))-1)); end;
+function get_modem(p_str: String):String;
+begin Result:=trim(copy(p_str,pos('MODEM:',p_str)+6,pos(';',copy(p_str,pos('MODEM:',p_str)+6,length(p_str)-pos('MODEM:',p_str)-5))-1)); end;
+function get_sum(p_str: String):String;
+begin Result:=trim(copy(p_str,pos('SUM:',p_str)+4,pos(';',copy(p_str,pos('SUM:',p_str)+4,length(p_str)-pos('SUM:',p_str)-3))-1)); end;
+//выборка данных об оборудовании, вывод на поля формы и в Акты ПП /ПП возврат                                                                                                                                                                                                       
+procedure oborudovanieSHPD;
+var str, ssvc{***}, gen, sum_arenda, obr, sn, model, akt, sum, svccod : String;
+    i, j, l_sn, l_model, l_akt, l_sum, l_suma : Integer;                                                     
+begin
+  sn:=''; model:=''; akt:=''; sum:='';
+  Z.KeyValue:='0'; Z.KeyValue:=cbZ_obr.Text;                                                              
+  SetFilter('Листы заявления','svc_code in ('+codi_realiz+','+codi_arendi+')');   //выборку нарядов ограничиваем соответствующими услугами                                                                                                                              
+  lZDate.Caption:=<Заявления абонента."Дата создания заявления">;{***}  
+  lZPhone.Caption:=<Листы заявления."Номер устройства">;{***}                                                    
+  qOL.First; ssvc:='';{***}                                    
+  while not qOL.eof do begin                                   //все они скорее всего содержат нужное оборудование, перебераем весь набор
+     svccod:=<Листы заявления."Раз.услуга Код">;
+     //комплектующие не прописываются в доп. информацию, но для них есть код                                                                                                                                                                                      
+     ssvc:=ssvc+'; '+svccod+': '+<Листы заявления."Раз.услуга Наименование">;{***}                                                                
+     str:=trim(<Содержание листа."Примечание">);                  //берём всю строку доп. инфо.                                                                                                                                          
+     if (pos('GEN',str)>0) then begin                             //если в ней есть оборудование      
+        gen:=trim(copy(str,pos('GEN',str)+3,1));                  //берём номер после GEN - это вид оборудования, далее он обозначается соответствующей буквой                                                                                                                                                                                                                                                                                                                           
+        if gen='0' then obr:='M' else   
+        if gen='2' then obr:='O' else
+        if gen='3' then obr:='S' else  
+        if gen='6' then obr:='K' else 
+        if gen='9' then obr:='B' else obr:=' ';
+        obr:=' '+obr+' |';                                        //далее по пост. услугам аренды берётся соответствующая сумма аренды                                                                                                                                                                                                                                         
+        sn:=get_sn(str); model:=get_modem(str); 
+        if Pos(svccod,codi_arendi)>0 then begin 
+           akt:='в аренду'; 
+           if gen='3' then sum_arenda:='85' else 
+           if gen='2' then sum_arenda:='20' else sum_arenda:='1';
+        end else begin 
+           if Pos(svccod,codi_realiz)>0 then akt:='в собств.' else akt:='';
+           sum_arenda:='';               
+        end;                                                                   
+        if svccod='81625' then sum:=<Содержание листа."Сумма">/100 else sum:=FormatFloat('#.##',StrToFloat(get_sum(str))*1.18); if sum='' then sum:='0'; //сразу с НДС (для предприятий)                                                                        
+     end else         
+     if (pos('АУ=',str)>0) then begin                           //если в ней есть оборудование
+        obr:=' ';
+        obr:=' '+obr+' |';                                        //далее по пост. услугам аренды берётся соответствующая сумма аренды                                                                                                                                                                                                                                         
+        sn:=get_sn(str); model:=''; 
+        if Pos(svccod,codi_arendi)>0 then begin 
+           akt:='в аренду'; 
+           sum_arenda:='';                                                                                  
+        end else begin 
+           if Pos(svccod,codi_realiz)>0 then akt:='в собств.' else akt:='';
+           sum_arenda:='';               
+        end;
+        if svccod='81625' then sum:=<Содержание листа."Сумма">/100 else sum:='';                                    //затем берутся все поля оборудования и их длины
+     end;                 
+
+     l_sn:=length(sn); l_model:=length(model); l_akt:=length(akt); l_sum:=length(sum); l_suma:=length(sum_arenda);          //затем берутся все поля оборудования и их длины
+     i:=1; while i<=35-l_sn do begin sn:=sn+' '; i:=i+1; end; sn:=sn+'|';                           //и в циклах добавляются недостающие пробелы до одинаковой длины колонок                                                                                                                                                                                                                                                                                                 
+     i:=1; while i<=38-l_model do begin model:=model+' '; i:=i+1; end; model:=model+'|';     //45
+     i:=1; while i<=9-l_akt do begin akt:=akt+' '; i:=i+1; end; akt:=akt+'|';                                                                                               
+     i:=1; while i<=9-l_sum do begin sum:=' '+sum; i:=i+1; end; sum:=sum+'|';                                                          
+     i:=1; while i<=8-l_suma do begin sum_arenda:=' '+sum_arenda; i:=i+1; end;                                                                                            
+     clbOborud.Items.Add(sn+model+obr+' |'+akt+sum+sum_arenda);                                              //получается строка разбитая на колонки                                                                                   
+     k:=k+1;                        
+     clbOborud.Checked(k):=true;                                                                             //флажок п.у.
+     setLength(arForTorg12,k+1); arForTorg12[k]:=<Заявления абонента."Номер заявления">;   
+
+     qOL.Next;
+  end;
+  qOL.First;      
+  if ssvc<>'' then delete(ssvc,1,2);{***}  
+  lZSvc.Caption:=ssvc;{***} //*** это механизм выбора данных заявления (Даты, Тел-а, Услуг) в инф. поля. Здесь пометил его чтобы можно было найти, убрать, если не нужен.                                                                                                                                                                                                                                                                                                                                                                  
+  SetFilter('Листы заявления','');               
+end;
+{*** выбор заявления ***}
+procedure cbZ_obrOnClick(Sender: TfrxComponent);
+begin
+  OborudovanieSHPD;                                                        
+end;
+{*** очистка резинкой ***}                                                           
+procedure bbClearOnClick(Sender: TfrxComponent);
+begin
+  clbOborud.Items.clear(); chbAlloborud.checked:=false; eSN.Text:=''; cbModel.Text:=''; eObr.Text:=''; cbAkt.Text:=''; eSum.Text:=''; eSuma.Text:=''; cbZ_obr.ItemIndex:=-1; k:=-1;                                                                                                                                                                                                                                        
+  lZDate.Caption:=''; lZPhone.Caption:=''; lZSvc.Caption:='';{***}
+  setLength(arForTorg12,0);                                                      
+end;
+{*** Выбор/невыбор всего оборудования общим флажком ***}
+//здесь просто пробегается весь спискок и ставятся/снимаются везде флажки                                                                                                                                                                                                           
+procedure CheckBox1OnClick(Sender: TfrxComponent);
+var i : Integer;                                     
+begin
+  if checklist=false then begin                 //при снятии флажка в списке общий флажок так же принудительно снимаем, но тогда срабатывает эта процедура и это условие нужно                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+     i:=0;                                                                   //чтобы она не срабатывала, иначе снимает и остальные флажки, т.е. эта процедура должна срабатывать                                                                                                                                                                                                                                        
+     while i<clbOborud.Items.Count do begin                                                                                  //только при нажатии на общем флажке а не на списке                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+       clbOborud.Checked(i):=chbAlloborud.checked;           
+       i:=i+1;                    
+     end;
+  end;                 
+end;
+{*** Нажатие на списке оборудования - 1) установка/снятие флажков, 2) выбор позиции для редактирования ***}
+procedure clbOborudOnClick(Sender: TfrxComponent);
+var i, c, n : Integer;
+    str, s : string;                                                
+begin
+  if clbOborud.ItemIndex<>-1 then begin                                                                               
+     //проверяет есть ли невыбранные, если да, то снимает общий флажок, если нет, то устанавливает                                 //тогда процедура ниже срабатывать не должна                                                                                             
+     i:=0; c:=0;               
+     while i<clbOborud.Items.Count do begin
+       if clbOborud.Checked(i)=false then begin c:=c+1; break; end;                                                                  
+       i:=i+1;                    
+     end;            //вот здесь как раз checklist не даёт срабатывать процедуре общего флажка при принудительной его установке/снятии                                                                                                                                                                                                                                                     
+     if c>0 then begin checklist:=true; chbAlloborud.checked:=false; checklist:=false; end else begin checklist:=true; chbAlloborud.checked:=true; checklist:=false; end;
+            
+     //строку с оборудованием из списка разбирает по разделителям "|" в соответствующие поля строки редактирования                                                                                                                                                                                                                                                             
+     str:=clbOborud.Items.Strings(clbOborud.ItemIndex)+'|';
+     s:=''; c:=0;
+     while str<>'' do begin
+       list_click:=true;         
+       c:=c+1; n:=Pos('|',str); s:=trim(Copy(str,1,n-1));
+       case c of 1: eSN.Text:=s; 2: cbModel.Text:=s; 3: eObr.Text:=s; 4: if s='X' then chbBu.checked:=true else chbBu.checked:=false; 5: cbAkt.Text:=s; 6: eSum.Text:=s; 7: eSuma.Text:=s; end;
+       Delete(str,1,n);                       
+     end;
+     list_click:=true;  //при нажатии на флажке/строке строка будет выделенна - поэтому это нажатие на списке, и данные копируются в строку под ним - это изменение в строке, оно должно игнорироваться (а не копироваться в выбранную строку). поэтому в процедуре изменения строки есть такое условие, что <>true                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+  end;               
+end;
+{*** добавление пустой строки оборудования по кнопке "+" ***}                                                                                                                                 
+procedure bOborudPlusOnClick(Sender: TfrxComponent);
+begin
+   clbOborud.Items.Add('                                   |                                      |   | |         |         | ');
+   k:=k+1;                        
+   clbOborud.Checked(k):=true;
+   setLength(arForTorg12,k+1); arForTorg12[k]:='';                                                                                                                   
+end;
+{*** Редактирование оборудования, позиции в строке редактирования ***}
+//сразу после щелчка на списке нельзя менять например пустую строку, первое изменение (первый символ) в любом поле игнорируется, чтобы этого не было добавил эту процедуру.                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+procedure eChangeOnMouseDown(Sender: TfrxComponent; Button: TMouseButton; Shift: Integer; X, Y: Integer);
+begin list_click:=false; end;
+//а это сама процедура замены                                                                    
+procedure OborudOnChange(Sender: TfrxComponent);
+var sn, model, obr, bu, akt, sum, suma : String;
+    i, l_sn, l_model, l_obr, l_akt, l_sum, l_suma : Integer;                                                     
+begin                                                                                                                  
+  if (clbOborud.ItemIndex>=0) and (list_click<>true) then begin    //если позиция отмечена и изменение не по щелчку на списке, а это именно изменение в строке редактирования        //Если изменение по щелчку на списке - тогда                                                                                                                                    
+     sn:=trim(eSN.Text); model:=trim(cbModel.Text); obr:=trim(eObr.Text); if chbBu.checked then bu:='X' else bu:=' '; akt:=cbAkt.Text;
+     onlyone:=onlyone+1;                     
+     if (sender.name='cbAkt') and (onlyone=1) then                                                                                               
+        if akt='торг 12' then begin
+           i:=clbOborud.ItemIndex;                                                                                       
+           if arForTorg12[i]='' then begin eT.Text:=''; dpTorg.ShowModal; arForTorg12[i]:=trim(eT.Text); end;
+        end;
+     if onlyone=2 then onlyone:=0;                                                                                       
+     sum:=trim(eSum.Text); if sum='' then sum:='0'; suma:=trim(eSuma.Text); //заменять строку не надо.
+     l_sn:=length(sn); l_model:=length(model); l_obr:=Length(obr); l_akt:=length(akt); l_sum:=length(sum); l_suma:=length(suma);                                                                                                                     
+     i:=1; while i<=35-l_sn do begin sn:=sn+' '; i:=i+1; end; sn:=sn+'|';                                                                                                                         
+     i:=1; while i<=38-l_model do begin model:=model+' '; i:=i+1; end; model:=model+'|';
+     obr:=Uppercase(trim(obr));                                               
+     if obr<>'' then begin
+        case trim(obr) of     //если введены русские буквы                                                                          
+          'М': obr:='M';                          
+          'О': obr:='O';     
+          'К': obr:='K';     
+          'В': obr:='B'; 'V': obr:='B';
+        end;
+        if (obr<>'M') and (obr<>'O') and (obr<>'S') and (obr<>'K') and (obr<>'B') and (obr<>'-') then obr:=' ';                                                                                                                                                   
+        obr:=' '+obr+' |';  
+     end else obr:='   |';
+     i:=1; while i<=9-l_akt do begin akt:=akt+' '; i:=i+1; end; akt:=akt+'|';                                                                                               
+     i:=1; while i<=9-l_sum do begin sum:=' '+sum; i:=i+1; end; sum:=sum+'|';                                                          
+     i:=1; while i<=8-l_suma do begin suma:=' '+suma; i:=i+1; end;                                                                                           
+     clbOborud.Items[clbOborud.ItemIndex]:=sn+model+obr+bu+'|'+akt+sum+suma;                 //замена строки целиком                                                
+  end;
+  list_click:=false;                                                              //установка в начальное значение                                                                                                         
+end;
+{*** Проверка окна с оборудованием на ошибки ***}
+procedure bOborudOKOnMouseDown(Sender: TfrxComponent; Button: TMouseButton; Shift: Integer; X, Y: Integer);
+var i, c1, c2, answer : integer;    
+    str : string;
+begin
+  dpOborudVAkti.ModalResult:=mrOk;                 //п.у.                
+  answer:=0;                                       //ответ диалогового окна                                                      
+  str:='';                                         //строка из списка                                                              
+  i:=0; c1:=0; c2:=0;                                                                      
+  while i<clbOborud.Items.Count do begin           //перебор всех строк и анализируем только выбранные, остальные никуда не попадут                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+    if clbOborud.Checked(i) then begin 
+       str:=clbOborud.Items[i]; Delete(str,1,Pos('|',str)); Delete(str,1,Pos('|',str)); if trim(Copy(str,1,Pos('|',str)-1))='' then c1:=c1+1; //значит есть пустой вид оборудования -                                                                                                                                                                                                                                                                
+                                Delete(str,1,Pos('|',str)+2); if trim(Copy(str,1,Pos('|',str)-1))='' then c2:=c2+1;                            //ошибка, но не строгая, т.е. возможно не     
+                                                       //+2 - это поле БУ                                                                      //заполнять, но желательно заполнить всё же.
+    end;
+    i:=i+1;                                                                                                                                                                                                                                                                                                                                                       
+  end;                                                                                                                                                                                                            
+  if c2>0 then showmessage('Не указан документ для одного или более выбранного (флажком) оборудования');                                      
+  if c1>0 then answer:=messagedlg('Не у всех выбранных оборудований указан его вид (графа Обр).'+Chr(10)+'От вида оборудования зависит, какие будут комплектации'+Chr(10)+'Всё равно продолжить? (Yes), Cancel - отредактировать (добавить вид)',mtConfirmation,9,1);
+  if (c2>0) or (answer=2) then dpOborudVAkti.ModalResult:=mrNone
+                          else dpOborudVAkti.ModalResult:=mrOk;   
+end;
+{*** при закрытии окна выбора оборудования меняется тект и подсветка кнопки ***}        
+procedure dpOborudVAktiOnHide(Sender: TfrxComponent);
+var i : Integer;
+    is_oborud : Boolean;                                  
+begin
+  is_oborud:=false;    //оборудование не выбрано (список пуст или в списке нет выбранных флажков)                  
+  i:=0;                                                                                                                                                                                                                                                                                                           
+  while i<clbOborud.Items.Count do begin                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+    if clbOborud.Checked(i) then begin is_oborud:=true; break; end;                                                             
+    i:=i+1;                    
+  end;
+  if is_oborud then begin bbOborudVAkti.Caption:=' Оборудование в Акты п/п  (выбрано)'; pnlObrVAkti.Color:=c_color5; end           
+               else begin bbOborudVAkti.Caption:='Оборудование в Акты п/п (не выбрано)'; pnlObrVAkti.Color:=c_color1; end;
+end;
+    
+
+  
+
+  
+//для Акта вып раб                                                                                                                             
+procedure bbZPrilOnClick(Sender: TfrxComponent);
+begin
+  dpZPril.ShowModal;
+end;
+//нажатие на флажок для акта вып. работ                                                                                                                                   
+procedure chbAktVRabOnClick(Sender: TfrxComponent);
+var i : Integer;
+begin
+  if chbAktVRab.checked then begin                                   
+     if isfirst_aktvrab then begin 
+        isfirst_aktvrab:=false; 
+        get_arZ(); 
+        i:=0; while i<length(arAllZ) do begin clbZAktVRab.Items.Add(arAllZ[i]); i:=i+1; end;
+     end;
+     recolorClb(clbZAktVRab,clWindow); clbZAktVRab.Enabled:=true;
+  end else begin
+     recolorClb(clbZAktVRab,clBtnFace); clbZAktVRab.Enabled:=false;        
+  end;            
+end;
+{*** при закрытии окна меняется тект и подсветка кнопки ***}        
+procedure dpZPrilOnHide(Sender: TfrxComponent);
+var i,c : Integer;                                             
+begin
+  selected_aktvrab:=false;   //Не выбраны документы, либо в выбранных не отмечено ни одно заявление
+  if chbAktVRab.checked then begin             
+     i:=0;
+     while i<clbZAktVRab.Items.Count do begin                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+       if clbZAktVRab.Checked(i) then begin selected_aktvrab:=true; break; end;                                                             
+       i:=i+1;                    
+     end;
+  end;               
+  if (selected_aktvrab) then begin bbZPril.Caption:='  Акт вып работ (выбраны)'; pnlZPril.Color:=c_color5; end 
+                        else begin bbZPril.Caption:='Акт вып работ (не выбраны)'; pnlZPril.Color:=c_color1; end;
+end;
+{***********************************************}
+{*** вывод приложений с выбором из заявлений ***}
+{***********************************************}
+{*** Акт выполненных работ ***}
+procedure rtOnAfterPrint(Sender: TfrxComponent);
+begin
+  Z.KeyValue:='0';            
+  сумма_работ:=0; номер_пп:=0;                         
+end;
+procedure pAktVipRabOnManualBuild(Sender: TfrxComponent);
+var i : Integer;
+begin
+   Engine.ShowBand(rt);
+      i:=0;
+      while i<clbZAktVRab.Items.Count do begin
+            if clbZAktVRab.checked(i) then begin
+               Z.KeyValue:=clbZAktVRab.Items.Strings[i];                                                                                                               
+               дата_выполнения_работ:=iif(StrToInt(Copy(DateToStr(<Содержание заявления."Дата установки">),7,4))<1990,DateToStr(<Содержание заявления."Дата создания заявления">),DateToStr(<Содержание заявления."Дата установки">));    
+               qOL.First;
+               while not qOL.eof do begin
+                     номер_пп:=номер_пп+1;                   
+                     наимен_раз_услуги:=<Листы заявления."Раз.услуга Наименование">;                            
+                     МПУ_услуги:=<Содержание листа."МПУ услуги">;
+                     номер_устройства:=<Листы заявления."Номер устройства">;
+                     сумма_работ:=сумма_работ+<Содержание листа."Сумма">; 
+                     Engine.ShowBand(md);
+                     qOL.Next;
+               end;
+            end;
+            i:=i+1;                                          
+      end;
+   сумма_работ_на_сумму:=FloatToStr(сумма_работ/100);                                                         
+   сумма_работ_в_тч_НДС:=FloatToStr(ROUND(сумма_работ/118*18*)/100);                                  
+   Engine.ShowBand(f);
+   Engine.ShowBand(ff);                                           
+end;
+
+  
+{*** (pInet) по Аналогии с П2 в договоре ***}
+procedure pInetOnBeforePrint(Sender: TfrxComponent);
+begin Z.KeyValue:='0'; end;
+procedure pInetOnManualBuild(Sender: TfrxComponent);
+var id_layer,cnt,i,p : Integer;                                                            
+begin
+  Engine.ShowBand(mdH);        
+  Engine.ShowBand(mdDSInet);        
+  нп:=1;                                                                                                 
+  if selected_p2='по заявлению' then begin    
+{     qOL.First;
+     while not qOL.eof do begin
+       cnt:=cnt+1;                                              
+       SetLength(arr_inet_tp,cnt);
+       arr_inet_port[cnt-1]:=<Постоянные услуги абонента."Номер устройства">+'``'+trim(<Постоянные услуги абонента."Наименование">);                                                                 
+       qOL.Next;
+     end;}  
+     i:=0;      
+     while i<Length(arZp2) do begin
+       Z.KeyValue:=arZp2[i];                                                                                      
+       {if нп=1 then }SetFilter('Листы заявления','ID_CELL_SVC IN (-101,-10101,-102,-10201) or SVC_ID=55552'); //-101, -10101, -11001,-11004,-11008,-11002,-102,-10201, -104,-10401,-11003)');
+       qOL.First;
+       while not qOL.eof do begin
+         тел:=<Листы заявления."Номер устройства">;                    
+         //if (тел_предыдущ<>тел) and (нп>1) then begin                                    
+            //Engine.ShowBand(mdInetData);
+            технология_шпд:='';
+            адрес_мпу:=''; 
+            дата_начала:=''; 
+            тарифный_план_шпд:=''; 
+            ип_адрес:=''; 
+            вид_оборудования:=''; 
+            протокол_передачи:=''; 
+            //нп:=нп+1;                                   
+         //end;                    
+//         if (<Содержание листа."Пост.ИД слоя">=-11001) or (<Содержание листа."Пост.ИД слоя">=-11002) or (<Содержание листа."Пост.ИД слоя">=-11004) or (<Содержание листа."Пост.ИД слоя">=-12000) then begin
+//            if (<Содержание листа."Пост.ИД слоя">=-11001) then begin технология_шпд:='xDSL'; вид_оборудования:='Модем'; end;
+//            if (<Содержание листа."Пост.ИД слоя">=-11002) then begin технология_шпд:='ETTH'; вид_оборудования:='Коммутатор'; end;
+//            if (<Содержание листа."Пост.ИД слоя">=-11002) then begin технология_шпд:='FTTx'; вид_оборудования:='Коммутатор'; end;
+         
+  
+         адрес_мпу:=<Содержание листа."МПУ услуги">;
+         дата_начала:=<Листы заявления."Начало действия">;
+         if (дата_начала='30.12.1899') or (дата_начала='0') then дата_начала:='';              
+//         end;
+
+         id_layer:=<Содержание листа."Пост.ИД слоя">;
+         if (id_layer=-11001) then begin технология_шпд:='xDSL'; вид_оборудования:='модем'; end else
+         if (id_layer=-11002) then begin технология_шпд:='ETTH'; вид_оборудования:='коммутатор'; end else
+         if (id_layer=-11004) then begin технология_шпд:='GPON'; вид_оборудования:='модем'; end else
+
+         if (<Листы заявления."ИД слоя">=-102) or (<Листы заявления."ИД слоя">=-10201) then begin
+            if Length(<Содержание листа."IP адрес">)<>0 then ип_адрес:=<Содержание листа."IP адрес">;  
+            if (<Содержание листа."Пост.ИД услуги">)<>710113 then begin
+               тарифный_план_шпд:=<Содержание листа."Пост.Наим.услуги">;
+               //протокол_передачи:='TCP/IP';
+               if (id_layer=-11007) then begin
+                  if pos('xdsl',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='xDSL'; вид_оборудования:='модем'; end else                                                                                                                 
+                  if pos('adsl',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='ADSL'; вид_оборудования:='модем'; end else  
+                  if pos('shdsl',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='SHDSL'; вид_оборудования:='модем'; end else  
+                  if pos('etth',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='ETTH'; вид_оборудования:='коммутатор'; end else                                                                     
+                  if pos('gpon',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='GPON'; вид_оборудования:='модем'; end else                                                                     
+                  if pos('ethernet',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='Ethernet'; вид_оборудования:=''; end;                                                                       
+               end;
+               if (технология_шпд='') then begin
+                  if pos('xdsl',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='xDSL'; вид_оборудования:='модем'; end else                                                                                                                 
+                  if pos('adsl',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='ADSL'; вид_оборудования:='модем'; end else  
+                  if pos('shdsl',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='SHDSL'; вид_оборудования:='модем'; end else  
+                  if pos('etth',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='ETTH'; вид_оборудования:='коммутатор'; end else                                                                     
+                  if pos('gpon',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='GPON'; вид_оборудования:='модем'; end else                                                                     
+                  if pos('ethernet',lowercase(тарифный_план_шпд))>0 then begin технология_шпд:='Ethernet'; вид_оборудования:=''; end;                                                                       
+               end;
+            end;
+            //if                     
+         end;
+         if (<Листы заявления."ИД слоя">=-101) or (<Листы заявления."ИД слоя">=-10101) then begin
+               порт:=<Содержание листа."Пост.Наим.услуги">;
+               if (id_layer=-11007) then begin
+                  if pos('xdsl',lowercase(порт))>0 then технология_шпд:='xDSL' else                                                                                                                 
+                  if pos('adsl',lowercase(порт))>0 then технология_шпд:='ADSL' else  
+                  if pos('shdsl',lowercase(порт))>0 then технология_шпд:='SHDSL' else  
+                  if pos('etth',lowercase(порт))>0 then технология_шпд:='ETTH' else                                                                     
+                  if pos('gpon',lowercase(порт))>0 then технология_шпд:='GPON' else                                                                     
+                  if pos('ethernet',lowercase(порт))>0 then технология_шпд:='Ethernet';                                                                       
+               end;
+               if (технология_шпд='') then begin
+                  if pos('xdsl',lowercase(порт))>0 then технология_шпд:='xDSL' else                                                                                                                 
+                  if pos('adsl',lowercase(порт))>0 then технология_шпд:='ADSL' else  
+                  if pos('shdsl',lowercase(порт))>0 then технология_шпд:='SHDSL' else  
+                  if pos('etth',lowercase(порт))>0 then технология_шпд:='ETTH' else                                                                     
+                  if pos('gpon',lowercase(порт))>0 then технология_шпд:='GPON' else                                                                     
+                  if pos('ethernet',lowercase(порт))>0 then технология_шпд:='Ethernet';                                                                       
+               end;
+               вид_оборудования:='порт';                                       
+         end;
+         протокол_передачи:='TCP/IP';
+//         if length(технология_шпд)=0 then begin
+//            if (pos('DSL',uppercase(тарифный_план_шпд))<> 0) then begin технология_шпд:='xDSL'; вид_оборудования:='порт'; end;
+//            if (pos('TTH',uppercase(тарифный_план_шпд))<> 0) then begin технология_шпд:='ETTH'; вид_оборудования:='порт'; end;
+//            if (pos('PON',uppercase(тарифный_план_шпд))<> 0) then begin технология_шпд:='FTTx'; вид_оборудования:='порт'; end;
+//         end;               
+         //тел_предыдущ:=тел;
+         if (<Листы заявления."ИД слоя">=-102) or (<Листы заявления."ИД слоя">=-10201) then Engine.ShowBand(mdInetData);
+         if (<Листы заявления."ИД слоя">=-101) or (<Листы заявления."ИД слоя">=-10101) then Engine.ShowBand(mdPortData);           
+         нп:=нп+1;             
+         qOL.Next;                   
+       end;
+       SetFilter('Листы заявления','');
+       i:=i+1                     
+     end;                 
+     //Engine.ShowBand(mdInetData);
+  end;
+    
+  if selected_p2='по л/с' then begin                                                                                        
+     SetFilter('Постоянные услуги абонента','CONST_SVC_ID_CELL_SVC=-12000');
+     cnt:=0;                     
+     qPU.First;
+     while not qPU.eof do begin
+       cnt:=cnt+1;                                              
+       SetLength(arr_inet_tp,cnt);
+       arr_inet_tp[cnt-1]:=<Постоянные услуги абонента."Номер устройства">+'``'+trim(<Постоянные услуги абонента."Наименование">);                                                                 
+       qPU.Next;
+     end;
+     SetFilter('Постоянные услуги абонента','');                 
+     SetFilter('Постоянные услуги абонента','COD=''105143''');
+     cnt:=0;                     
+     qPU.First;
+     while not qPU.eof do begin
+       cnt:=cnt+1;                                              
+       SetLength(arr_inet_ip,cnt);
+       arr_inet_ip[cnt-1]:=<Постоянные услуги абонента."Номер устройства">;                                                                 
+       qPU.Next;
+     end;
+     SetFilter('Постоянные услуги абонента','');                 
+     {if нп=1 then }SetFilter('Постоянные услуги абонента','CONST_SVC_ID_CELL_SVC IN (-11001,-11002,-11004,-11007)');
+     qPU.First;
+     while not qPU.eof do begin
+        тел:='';               
+        технология_шпд:='';
+        адрес_мпу:=''; 
+        дата_начала:=''; 
+        тарифный_план_шпд:='';                                  
+        ип_адрес:=''; 
+        вид_оборудования:=''; 
+        протокол_передачи:=''; 
+
+        тел:=<Постоянные услуги абонента."Номер устройства">;                                 
+        id_layer:=<Постоянные услуги абонента."ИД слоя">;                          
+        порт:=<Постоянные услуги абонента."Наименование">;
+        if (id_layer=-11001) then begin технология_шпд:='xDSL'; вид_оборудования:='модем'; end else
+        if (id_layer=-11002) then begin технология_шпд:='ETTH'; вид_оборудования:='коммутатор'; end else
+        if (id_layer=-11004) then begin технология_шпд:='GPON'; вид_оборудования:='модем'; end else
+        if (id_layer=-11007) then begin
+           if pos('xDSL',порт)>0 then begin технология_шпд:='xDSL'; вид_оборудования:='модем'; end else                                                                                                                 
+           if pos('ADSL',порт)>0 then begin технология_шпд:='ADSL'; вид_оборудования:='модем'; end else  
+           if pos('SHDSL',порт)>0 then begin технология_шпд:='SHDSL'; вид_оборудования:='модем'; end else  
+           if pos('ETTH',порт)>0 then begin технология_шпд:='ETTH'; вид_оборудования:='коммутатор'; end else                                                                     
+           if pos('GPON',порт)>0 then begin технология_шпд:='GPON'; вид_оборудования:='модем'; end else                                                                     
+           if pos('Ethernet',порт)>0 then begin технология_шпд:='Ethernet'; вид_оборудования:=''; end;                                                                       
+        end;
+        адрес_мпу:=<Постоянные услуги абонента."МПУ.Адрес">;
+        дата_начала:=<Постоянные услуги абонента."Начало действия">;
+        if дата_начала='30.12.1899' then дата_начала:='';
+        i:=0;                    
+        while i<Length(arr_inet_tp) do begin
+          p:=pos('``',arr_inet_tp[i]);                                                               
+          if тел=copy(arr_inet_tp[i],1,p-1) then begin тарифный_план_шпд:=copy(arr_inet_tp[i],p+2,Length(arr_inet_tp[i])-p+1); break end;                                                                                                 
+          i:=i+1;                          
+        end;                  
+        i:=0;                    
+        while i<Length(arr_inet_ip) do begin
+          if тел=arr_inet_ip[i] then ип_адрес:='ДА' else ип_адрес:='нет';                                                                                                                     
+          i:=i+1;                          
+        end;                  
+        if тарифный_план_шпд<>'' then Engine.ShowBand(mdInetData);
+        вид_оборудования:='порт';            
+        Engine.ShowBand(mdPortData);
+        нп:=нп+1;
+        qPU.Next;
+     end;                                              
+     SetFilter('Постоянные услуги абонента','');           
+  end;
+    
+  if контент_фильтрация='ДА' then Engine.ShowBand(mdKF);                                             
+  Engine.ShowBand(mdPodpisi);    
+  if нп=1 then pInet.Visible:=False;                                                                                            
+end;
+
+
+
+{**********************************************************************************************************************************}
+{*** Процедура для подсчёта разбора (на рубли копейки) итоговых сумм с НДС и НДС для оборудования в собственность и в рассрочку ***}
+{**********************************************************************************************************************************}
+{*** подсчёт сумм и сохранение результата ***}
+//Суммы здесь складываются сразу отдельно с ндс, отдельно ндс, потому, чтобы сходились цифры с суммами в таблицах, иначе могут быть ошибки округления и небольшие расхождения
+//суммы никогда не будут пустыми, т.к. в поле таблицы с оборудованием в параметрах для актов "пусто" всегда заменятеся на 0.                                                                                                                                                                                                                                                                                                                            
+procedure mdOSDogKP_1OnBeforePrint(Sender: TfrxComponent);
+var sum,sum_bez_nds,sum_s_nds,sum_nds : Double;
+    i,n : integer;
+    s,s_rub,s_kop : string;                                     
+begin    
+  стоимость_с_НДС_руб:=''; стоимость_с_НДС_коп:=''; стоимость_с_НДС_прописью_руб:=''; в_тч_НДС_руб:=''; в_тч_НДС_коп:=''; в_тч_НДС_прописью_руб:='';
+  sum:=0; sum_bez_nds:=0; sum_s_nds:=0; sum_nds:=0;              
+  i:=0;
+  while i<Length(arSobst) do begin
+    s:=arSobst[i]; delete(s,1,pos('|',s)); delete(s,1,pos('|',s)); delete(s,1,pos('|',s)); delete(s,1,pos('|',s)); delete(s,1,pos('|',s)); s:=trim(Copy(s,1,pos('|',s)-1));
+    n:=pos(',',s); if n>0 then s:=Copy(s,1,n-1)+'.'+Copy(s,n+1,2);
+    sum:=StrToFloat(s);
+    sum_s_nds:=sum_s_nds+sum;
+    sum_bez_nds:=sum/1.18;                                    
+    sum_nds:=sum_nds+(sum-sum_bez_nds);                                                                        
+    i:=i+1;
+  end;            
+  s:=FormatFloat('#.##',sum_s_nds);        //FormatFloat отсекает лишние нули, если после точки одни нули, то отсекает всю десятичную часть вместе с точкой, и округляет до кол-ва #-ок.                                                                                                                                                                                                                                                                                                  
+  n:=pos('.',s); if n=0 then begin s_rub:= s; s_kop:='00'; end else begin s_rub:=Copy(s,1,n-1); s_kop:=Copy(s,n+1,2); if Length(s_kop)=1 then s_kop:=s_kop+'0'; end;
+  стоимость_с_НДС_руб:=s_rub; стоимость_с_НДС_коп:=s_kop; стоимость_с_НДС_прописью_руб:=CntToStr(StrToInt(s_rub));
+  s:=FormatFloat('#.##',sum_nds);          //FormatFloat отсекает лишние нули, если после точки одни нули, то отсекает всю десятичную часть вместе с точкой, и округляет до кол-ва #-ок.                                                                                                                                                                                                                                                                                                  
+  n:=pos('.',s); if n=0 then begin s_rub:= s; s_kop:='00'; end else begin s_rub:=Copy(s,1,n-1); s_kop:=Copy(s,n+1,2); if Length(s_kop)=1 then s_kop:=s_kop+'0'; end;           
+  в_тч_НДС_руб:=s_rub; в_тч_НДС_коп:=s_kop; в_тч_НДС_прописью_руб:=CntToStr(StrToInt(s_rub)); 
+end;
+{*************************************************************************************}
+{*** Процедуры инициализации и вывода данных по оборудованию и сумм для всех актов ***}
+{*************************************************************************************}
+//инициализация                                
+procedure initforakts();                                                                                                                    
+begin итого_с_НДС:='0'; итого_без_НДС:='0'; итого_НДС:='0'; итого_ежемес:='0'; итого_колво:='0'; k:=0; end; //итого_ежемес используется только в акте п/п на аренду                            
+//сама процедура вывода данных и сумм и подсчёта итогов                                                                                                                                                                  
+procedure dataforakts(p_ar : array of string; p_akt : String);
+var str : String;
+    n : integer;                                                  
+    sum,sum_bez_nds,sum_nds : Double;    
+begin
+  if k<Length(p_ar) then begin                                                                            
+  сумма_с_НДС:='0'; сумма_НДС:='0'; сумма_без_НДС:='0'; if p_akt='A' then ежемес_с_НДС:='0';                //для каждой новой записи обнуляются суммы                                                                                                         
+  str:=p_ar[k];                                                                           //берётся строка оборудования из массива, разбирвается на части в переменные и потом рассчёт сумм
+  if (p_akt='T') then begin n:=Pos('|',str); {заявление пропускаем} delete(str,1,n); end;              
+  n:=Pos('|',str); сер_номер:=trim(Copy(str,1,n-1)); delete(str,1,n);                                                                                                                          
+  n:=Pos('|',str); модель:=trim(Copy(str,1,n-1));    delete(str,1,n); 
+  n:=Pos('|',str); вид_обр:=trim(Copy(str,1,n-1));   delete(str,1,n);
+  case p_akt of                                                                                                                                          
+    'A': case вид_обр of  //для аренды с комплектацией   
+           'M': begin вид_обр:='Модем:';       mdMdm.Visible:=true;     end;           
+           'O': begin вид_обр:='ONT модем:';   mdONT.Visible:=true;     end;  
+           'S': begin вид_обр:='STB:';         mdSTB.Visible:=true; if chbKKabel.checked then mdSTBKabel.Visible:=true; if chbKScart.checked then mdSTBScart.Visible:=true; if chbKElPitPult.checked then mdSTBElPitPult.Visible:=true; end;         
+           'K': begin вид_обр:='Коммутатор:';  mdKmt.Visible:=true;     end;  
+           'B': begin вид_обр:='Видеосендер:'; mdVidsend.Visible:=true; end;                                 
+           else вид_обр:='';                                    
+         end;  
+    else case вид_обр of  //для всех остальных
+           'M': вид_обр:='Модем:';
+           'O': вид_обр:='ONT модем:';
+           'S': вид_обр:='STB:';       
+           'K': вид_обр:='Коммутатор:';
+           'B': вид_обр:='Видеосендер:';                               
+           else вид_обр:='';                                    
+         end;
+  end;                   
+  n:=Pos('|',str); БУ:=trim(Copy(str,1,n-1));        delete(str,1,n); 
+  n:=Pos('|',str); {это акт, он не нужен}            delete(str,1,n); 
+  n:=Pos('|',str); sum:=StrToFloat(trim(Copy(str,1,n-1)));                    //ещё для аренды выводится ежемесячный платёж с итогами по нему.                                                                                                                                           
+  if p_akt='A' then begin delete(str,1,n); ежемес_с_НДС:=trim(Copy(str,1,n-1)); итого_ежемес:=FormatFloat('#.##',StrToFloat(итого_ежемес)+StrToFloat(ежемес_с_НДС)) end;
+  sum_bez_nds:=sum/1.18;                                  
+  sum_nds:=sum-sum_bez_nds;
+  сумма_с_НДС:=FormatFloat('#.##',sum);
+  сумма_НДС:=FormatFloat('#.##',sum_nds);            
+  сумма_без_НДС:=FormatFloat('#.##',sum_bez_nds);
+  итого_колво:=IntToStr(StrToInt(итого_колво)+1);                  
+  итого_с_НДС:=FormatFloat('#.##',StrToFloat(итого_с_НДС)+sum);
+  итого_НДС:=FormatFloat('#.##',StrToFloat(итого_НДС)+sum_nds);                      
+  итого_без_НДС:=FormatFloat('#.##',StrToFloat(итого_без_НДС)+sum_bez_nds);
+  k:=k+1;
+  if p_akt='T' then begin t12np:=IntToStr(StrToInt(t12np)+1); end;
+  end else begin
+     if p_akt='T' then begin t12np:=''; t12_kolvo:=''; вид_обр:=''; сер_номер:=''; модель:=''; t12_nds_percent:=''; сумма_с_НДС:=''; сумма_НДС:=''; сумма_без_НДС:=''; end;
+  end;            
+end;
+{***************************************************************************************}
+{*** вывод данных о реализуемом оборудовании без рассрочки - в договор купли-продажи ***}
+{***************************************************************************************}
+procedure mdOS_hOnBeforePrint(Sender: TfrxComponent);
+begin initforakts(); end;
+procedure mOSDogKP_snOnBeforePrint(Sender: TfrxComponent);
+begin dataforakts(arSobst,'DKP'); end;
+{********************************************************************}
+{*** вывод Акта п/п с оборудованием без рассрочки и в рассрочку ***}
+{********************************************************************}
+{*** вывод Акта п/п с оборудованием без рассрочки и в рассрочку ***}                                      
+//без рассрочки
+procedure ReportTitle4OnAfterPrint(Sender: TfrxComponent);
+begin initforakts(); end;
+procedure mAktppSOnBeforePrint(Sender: TfrxComponent);
+begin dataforakts(arSobst,'S'); end;
+{*** вывод ДС и Акта п/п в аренду с оборудованием и комплектацией ***}
+procedure mdKSTBOnBeforePrint(Sender: TfrxComponent);
+begin nKSTB:=5; end;
+procedure mdKSTBPosOnBeforePrint(Sender: TfrxComponent);
+begin nKSTB:=nKSTB+1; end;
+procedure ReportTitle5OnAfterPrint(Sender: TfrxComponent);
+begin initforakts(); end;
+procedure mAktppAOnBeforePrint(Sender: TfrxComponent);
+begin dataforakts(arArenda,'A'); end;
+{*********************************************************}
+{*** Вывод оборудования из списка оборудований Торг-12 ***}
+{*********************************************************}
+procedure pTorg12OnBeforePrint(Sender: TfrxComponent);
+begin initforakts(); t12np:='0'; t12_kolvo:='1'; t12_nds_percent:='18'; end;
+//заполняется номер документа                                                            
+procedure MasterData37OnBeforePrint(Sender: TfrxComponent);
+var i,n : Integer;
+    s : String;                                            
+begin
+  t12_numdoc:='';              
+  i:=0;
+  while (i<Length(arSobstT12)) do begin
+    s:=arSobstT12[i];                        
+    n:=Pos('|',s); s:=trim(Copy(s,1,n-1)); 
+    if (s<>'') and (Pos(s,t12_numdoc)=0) then begin
+       t12_numdoc:=t12_numdoc+', '+s;           
+    end;
+    i:=i+1;                    
+  end;
+  if t12_numdoc<>'' then delete(t12_numdoc,1,2);                                                                                      
+end;
+//заполняется Торг-12 и заодно показываются нужные комплектации                                                                                                                                                                         
+procedure mdT12_1OnBeforePrint(Sender: TfrxComponent);
+begin dataforakts(arSobstT12,'T'); end;
+
+
+{****************************************}
+{*** Вывод бланка заказа для VPN и ДС ***}
+{****************************************}
+{*** если в списке услуг выбрано VPN ***}                                                                                            
+procedure cbUslugiOnClick(Sender: TfrxComponent);
+begin                               //делаем доступными/недоступными кнопу и бланки                                                                                                                                               
+  if cbUslugi.Text='VPN' then begin bbZakazVPN.Enabled:=true;  pnlZakazVPN.Color:=c_color1;  pDS1_VPN.Visible:=true;  pZakaz_VPN.Visible:=true;  end
+                         else begin bbZakazVPN.Enabled:=false; pnlZakazVPN.Color:=clBtnFace; pDS1_VPN.Visible:=false; pZakaz_VPN.Visible:=false; end;                                        
+end;
+{*** вывод диалогового окна ***}                       
+procedure bbZakazVPNOnClick(Sender: TfrxComponent);
+begin
+  dpZakazVPN.ShowModal;
+end;
+{*** признак того что параметры заполнены - наличие рассчитанной суммы в первой строчке - кнопку делаем зелёной (выбранной) ***}                       
+procedure dpZakazVPNOnHide(Sender: TfrxComponent);
+begin
+  if lz1_sum1.Caption<>'' then pnlZakazVPN.Color:=c_color4;                                                                     
+end;
+{*** при активации диалогового окна ***}                       
+procedure dpZakazVPNOnActivate(Sender: TfrxComponent);
+var n, cnt : Integer;
+    s,zsvc,zkolvo,zadr,ztel,zspeed : String;                                            
+    sum : double;                                                
+begin
+   zadr:=''; zspeed:=''; ztel:='';                                                                 
+   qAK.First; cnt:=0;    //пробегаем набор детализации аренды каналов (кнопка "Аренда каналов" в Старте)                                                                                                                                                                                     
+   while not qAK.eof do begin
+     s:=<Детализация аренды каналов."Услуга">;               //берём услугу                                                                                                 
+     n:=Pos(':',s);                 
+     zsvc:=Copy(s,n+1,Length(s)-n);                          //там кроме услуги ещё есть какая-то приставка - берём только услугу                                                                                                                                                                                                                                                                                                                                                                                       
+     zkolvo:=<Детализация аренды каналов."Количество каналов">;
+     zadr:=zadr+';  '+<Детализация аренды каналов."Канал">;  //все адреса выводим в одном поле и так же скорости и все скорости, если что-то не правильно, или повторяется, пользователь     
+     zspeed:=zspeed+';  '+<Детализация аренды каналов."Тип канала">;                                                                                //потом может отредактировать руками
+     cnt:=cnt+1;      //заполняется столько строчек, сколько записей об аренде каналов                                                                                                                                                                                                                                                                                                                                                                  
+     if cnt=1  then begin ez1_svcname1.Text:=zsvc;  ez1_kolvo1.Text:=zkolvo;  end else                                                                                              
+     if cnt=2  then begin ez1_svcname2.Text:=zsvc;  ez1_kolvo2.Text:=zkolvo;  end else                                                                                              
+     if cnt=3  then begin ez1_svcname3.Text:=zsvc;  ez1_kolvo3.Text:=zkolvo;  end else                                                                                              
+     if cnt=4  then begin ez1_svcname4.Text:=zsvc;  ez1_kolvo4.Text:=zkolvo;  end else                                                                                              
+     if cnt=5  then begin ez1_svcname5.Text:=zsvc;  ez1_kolvo5.Text:=zkolvo;  end else                                                                                              
+     if cnt=6  then begin ez1_svcname6.Text:=zsvc;  ez1_kolvo6.Text:=zkolvo;  end else                                                                                              
+     if cnt=7  then begin ez1_svcname7.Text:=zsvc;  ez1_kolvo7.Text:=zkolvo;  end else                                                                                              
+     if cnt=8  then begin ez1_svcname8.Text:=zsvc;  ez1_kolvo8.Text:=zkolvo;  end else                                                                                              
+     if cnt=9  then begin ez1_svcname9.Text:=zsvc;  ez1_kolvo9.Text:=zkolvo;  end else                                                                                              
+     if cnt=10 then begin ez1_svcname10.Text:=zsvc; ez1_kolvo10.Text:=zkolvo; end;                                                                                              
+     qAK.Next;
+   end;
+   SetFilter('Постоянные услуги абонента','COD=''53294''');    //информация об аренде каналов есть ещё в пост. услугах, эти записи тоже надо вывести, пока в списке только одна услуга                                                                                                                                                                                                                                                                                                                                                                      
+   qPU.First;
+   while not qPU.eof do begin
+     zsvc:=<Постоянные услуги абонента."Наименование">;
+     zkolvo:='1';
+     ztel:=ztel+', '+<Постоянные услуги абонента."Номер устройства">;                                
+     zadr:=zadr+';  '+<Постоянные услуги абонента."МПУ.Адрес">;                
+     cnt:=cnt+1;                             
+     if cnt=1  then begin ez1_svcname1.Text:=zsvc;  ez1_kolvo1.Text:=zkolvo;  end else                                                                                              
+     if cnt=2  then begin ez1_svcname2.Text:=zsvc;  ez1_kolvo2.Text:=zkolvo;  end else                                                                                              
+     if cnt=3  then begin ez1_svcname3.Text:=zsvc;  ez1_kolvo3.Text:=zkolvo;  end else                                                                                              
+     if cnt=4  then begin ez1_svcname4.Text:=zsvc;  ez1_kolvo4.Text:=zkolvo;  end else                                                                                              
+     if cnt=5  then begin ez1_svcname5.Text:=zsvc;  ez1_kolvo5.Text:=zkolvo;  end else                                                                                              
+     if cnt=6  then begin ez1_svcname6.Text:=zsvc;  ez1_kolvo6.Text:=zkolvo;  end else                                                                                              
+     if cnt=7  then begin ez1_svcname7.Text:=zsvc;  ez1_kolvo7.Text:=zkolvo;  end else                                                                                              
+     if cnt=8  then begin ez1_svcname8.Text:=zsvc;  ez1_kolvo8.Text:=zkolvo;  end else                                                                                              
+     if cnt=9  then begin ez1_svcname9.Text:=zsvc;  ez1_kolvo9.Text:=zkolvo;  end else                                                                                              
+     if cnt=10 then begin ez1_svcname10.Text:=zsvc; ez1_kolvo10.Text:=zkolvo; end;                                                                                              
+     qPU.Next;
+   end;
+   SetFilter('Постоянные услуги абонента','');
+   delete(zadr,1,2); delete(ztel,1,2); delete(zspeed,1,2);
+   ez2_adr.Text:=zadr;  
+   ez2_tel.Text:=ztel;
+   ez2_speed.Text:=zspeed;                                                         
+end;
+{*** рассчёт и заполнение сумм кнопкой "Рвссчёт сумм" ***}                           
+procedure bCalcOnClick(Sender: TfrxComponent);
+var isum,inds,isnds : double;
+    s,s_rub,s_kop : string;                          
+    n : integer;                        
+begin
+   заказ_итого_с_НДС_прописью_руб:=''; заказ_итого_с_НДС_коп:='';              
+   isum:=0; inds:=0; isnds:=0;                                                                      
+   if (ez1_kolvo1.Text<>'') and (ez1_cost1.Text<>'') then begin
+      lz1_sum1.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo1.Text))*StrToFloat(trim(ez1_cost1.Text)));    isum:=StrToFloat(lz1_sum1.Caption);                
+      lz1_snds1.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum1.Caption)*1.18);                                    isnds:=StrToFloat(lz1_snds1.Caption);                       
+      lz1_nds1.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds1.Caption)-StrToFloat(lz1_sum1.Caption));            inds:=StrToFloat(lz1_nds1.Caption);                  
+   end;
+   if (ez1_kolvo2.Text<>'') and (ez1_cost2.Text<>'') then begin 
+      lz1_sum2.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo2.Text))*StrToFloat(trim(ez1_cost2.Text)));    isum:=isum+StrToFloat(lz1_sum2.Caption);  
+      lz1_snds2.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum2.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds2.Caption);   
+      lz1_nds2.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds2.Caption)-StrToFloat(lz1_sum2.Caption));            inds:=inds+StrToFloat(lz1_nds2.Caption);  
+   end;
+   if (ez1_kolvo3.Text<>'') and (ez1_cost3.Text<>'') then begin 
+      lz1_sum3.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo3.Text))*StrToFloat(trim(ez1_cost3.Text)));    isum:=isum+StrToFloat(lz1_sum3.Caption);              
+      lz1_snds3.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum3.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds3.Caption);   
+      lz1_nds3.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds3.Caption)-StrToFloat(lz1_sum3.Caption));            inds:=inds+StrToFloat(lz1_nds3.Caption);  
+   end;
+   if (ez1_kolvo4.Text<>'') and (ez1_cost4.Text<>'') then begin 
+      lz1_sum4.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo4.Text))*StrToFloat(trim(ez1_cost4.Text)));    isum:=isum+StrToFloat(lz1_sum4.Caption);  
+      lz1_snds4.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum4.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds4.Caption);   
+      lz1_nds4.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds4.Caption)-StrToFloat(lz1_sum4.Caption));            inds:=inds+StrToFloat(lz1_nds4.Caption);  
+   end;
+   if (ez1_kolvo5.Text<>'') and (ez1_cost5.Text<>'') then begin 
+      lz1_sum5.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo5.Text))*StrToFloat(trim(ez1_cost5.Text)));    isum:=isum+StrToFloat(lz1_sum5.Caption);  
+      lz1_snds5.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum5.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds5.Caption);   
+      lz1_nds5.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds5.Caption)-StrToFloat(lz1_sum5.Caption));            inds:=inds+StrToFloat(lz1_nds5.Caption);  
+   end;
+   if (ez1_kolvo6.Text<>'') and (ez1_cost6.Text<>'') then begin 
+      lz1_sum6.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo6.Text))*StrToFloat(trim(ez1_cost6.Text)));    isum:=isum+StrToFloat(lz1_sum6.Caption);  
+      lz1_snds6.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum6.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds6.Caption);   
+      lz1_nds6.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds6.Caption)-StrToFloat(lz1_sum6.Caption));            inds:=inds+StrToFloat(lz1_nds6.Caption);  
+   end;
+   if (ez1_kolvo7.Text<>'') and (ez1_cost7.Text<>'') then begin 
+      lz1_sum7.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo7.Text))*StrToFloat(trim(ez1_cost7.Text)));    isum:=isum+StrToFloat(lz1_sum7.Caption);  
+      lz1_snds7.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum7.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds7.Caption);   
+      lz1_nds7.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds7.Caption)-StrToFloat(lz1_sum7.Caption));            inds:=inds+StrToFloat(lz1_nds7.Caption);  
+   end;
+   if (ez1_kolvo8.Text<>'') and (ez1_cost8.Text<>'') then begin 
+      lz1_sum8.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo8.Text))*StrToFloat(trim(ez1_cost8.Text)));    isum:=isum+StrToFloat(lz1_sum8.Caption);  
+      lz1_snds8.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum8.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds8.Caption);   
+      lz1_nds8.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds8.Caption)-StrToFloat(lz1_sum8.Caption));            inds:=inds+StrToFloat(lz1_nds8.Caption);  
+   end;
+   if (ez1_kolvo9.Text<>'') and (ez1_cost9.Text<>'') then begin 
+      lz1_sum9.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo9.Text))*StrToFloat(trim(ez1_cost9.Text)));    isum:=isum+StrToFloat(lz1_sum9.Caption);  
+      lz1_snds9.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum9.Caption)*1.18);                                    isnds:=isnds+StrToFloat(lz1_snds9.Caption);   
+      lz1_nds9.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds9.Caption)-StrToFloat(lz1_sum9.Caption));            inds:=inds+StrToFloat(lz1_nds9.Caption);  
+   end;
+   if (ez1_kolvo10.Text<>'') and (ez1_cost10.Text<>'') then begin 
+      lz1_sum10.Caption:=FormatFloat('#.##',StrToFloat(trim(ez1_kolvo10.Text))*StrToFloat(trim(ez1_cost10.Text))); isum:=isum+StrToFloat(lz1_sum10.Caption);     
+      lz1_snds10.Caption:=FormatFloat('#.##',StrToFloat(lz1_sum10.Caption)*1.18);                                  isnds:=isnds+StrToFloat(lz1_snds10.Caption);   
+      lz1_nds10.Caption:=FormatFloat('#.##',StrToFloat(lz1_snds10.Caption)-StrToFloat(lz1_sum10.Caption));         inds:=inds+StrToFloat(lz1_nds10.Caption);  
+   end;
+   lz1_isum.Caption:=FormatFloat('#.##',isum);   lz1_inds.Caption:=FormatFloat('#.##',inds);   lz1_isnds.Caption:=FormatFloat('#.##',isnds);
+   s:=lz1_isnds.Caption;        //FormatFloat отсекает лишние нули, если после точки одни нули, то отсекает всю десятичную часть вместе с точкой, и округляет до кол-ва #-ок.                                                                                                                                                                                                                                                                                                  
+   n:=pos('.',s); if n=0 then begin s_rub:=s; s_kop:='00'; end else begin s_rub:=Copy(s,1,n-1); s_kop:=Copy(s,n+1,2); if Length(s_kop)=1 then s_kop:=s_kop+'0'; end;
+   заказ_итого_с_НДС_прописью_руб:=CntToStr(StrToInt(s_rub)); заказ_итого_с_НДС_коп:=s_kop;  
+end;
+
+{*** Для Сети кабельного телефидения (СКТВ) ***}                                                                                               
+procedure dpSKTVOnActivate(Sender: TfrxComponent);
+var str, s_fio1,s_fio2, s_phone1,s_mobile,s_phone2 : String;
+    i : Integer;                                              
+begin
+  if isfirst_sktv then begin   //все поля заполняются один раз при первой загрузке                                                                                                                                                                                                                         
+     isfirst_sktv:=false;
+       
+     get_arZ();                  //создаётся массив, если ещё не создан                                                                                    
+     i:=0; while i<length(arAllZ) do begin clbZsktv.Items.Add(arAllZ[i]); i:=i+1; end;   //заполняется список заявлений                                                                          
+     //контактные данные абонента                                                                                                 
+     s_fio1:=trim(<ДопИнфо по абоненту."Контактное лицо">);
+     s_phone1:=trim(<ДопИнфо по абоненту."Контактный телефон">);
+     s_mobile:=trim(<ДопИнфо по абоненту."SMS доставка">);                               
+     s_fio2:=trim(<ДопИнфо по абоненту."ФИО руководителя">);
+     s_phone2:=trim(<ДопИнфо по абоненту."Тел.руководителя">);                                              
+     str:='';    //здесь нужно сформировать и вывести строку вида "ФИОКонтактногоЛица КонтактныйТел1,Тел2,...; ФИОДиректора Тел1,Тел2..." повторяющиеся данные не берутся                                                                                                                                                                                                                                                                                                                                    
+     if s_fio1<>s_fio2 then str:=s_fio1;                          //здесь похоже не всё хорошо. Первое ФИО и телефоны должны обязательно браться, если они есть, а для второго -                                                                                                                                                                                                                                                                                             
+     if (s_phone1<>'') and (s_phone1<>s_phone2) then begin        //проверять на совпадение с первым, а у меня тут сделано как-то немного по другому.                                                                                                                                                                                                                                                   
+       str:=str+' '+s_phone1;
+       if s_mobile<>'' then str:=str+','+s_mobile; 
+     end else
+       if s_mobile<>'' then str:=str+' '+s_mobile;
+     if str<>'' then str:=str+';';                                    
+     if s_fio2<>'' then str:=str+' '+s_fio2;
+     if s_phone2<>'' then str:=str+' '+s_phone2;                                          
+     mSKTVKontactFace.Lines.Text:=str;                          
+     eSKTVEmail.Text:=trim(<ДопИнфо по абоненту."СД:Email">); if eSKTVEmail.Text='' then eSKTVEmail.Text:=trim(<ДопИнфо по абоненту."Email">);
+  end;
+end;
+{*** при установке флажка для СКТВ на главной форме ***}                         
+procedure chbSKTVOnClick(Sender: TfrxComponent);
+begin
+  if chbSKTV.checked then begin pnlSKTV.Enabled:=true;  bbSKTV.Enabled:=true;  pSKTVZakaz.Visible:=true;  pSKTVPril.Visible:=true;  end 
+                     else begin pnlSKTV.Enabled:=false; bbSKTV.Enabled:=false; pSKTVZakaz.Visible:=false; pSKTVPril.Visible:=false; end;    
+end;
+{*** диалоговое окно ***}                                                            
+procedure bbSKTVOnClick(Sender: TfrxComponent);
+begin
+  dpSKTV.ShowModal;
+end;
+{*** флажок выбора данных из заявления ***}                         
+procedure chbZsktvOnClick(Sender: TfrxComponent);
+begin                            //recolorClb - перекрашивает фон (подробно описана в основной форме договора предприятий)                                                                                                                                                                                                   
+  if chbZsktv.checked then begin recolorClb(clbZsktv,clWindow);  clbZsktv.Enabled:=true;  bbFilterZsktv.Enabled:=true;  lFilterZsktv.Enabled:=true;  end 
+                      else begin recolorClb(clbZsktv,clBtnFace); clbZsktv.Enabled:=false; bbFilterZsktv.Enabled:=false; lFilterZsktv.Enabled:=false; end;  
+end;
+{*** по кнопке фильтр из списка заявлений отфильтровываются только с услугой СКТВ ***}
+//есть аналогичные функции в договоре с подробным описанием                                                                                                                                                     
+procedure bbFilterZsktvOnClick(Sender: TfrxComponent);
+var str : string;                             
+    i : integer;
+begin
+  clbZsktv.Items.Clear();                                     
+  if isfilter_sktv=false then begin
+     str:='';                                    
+     i:=0;
+     while i<length(arAllZ) do begin
+       Z.KeyValue:=arAllZ[i];                                                           
+       SetFilter('Листы заявления','SVC_ID=10394');
+       qOL.First;
+       while not qOL.eof do begin                                                                 
+         str:='заявления с КТВ на л/с есть';
+         clbZsktv.Items.Add(<Заявления абонента."Номер заявления">);
+         qOL.Next;                              
+       end;                 
+       SetFilter('Листы заявления','');                                                           
+       i:=i+1;              
+     end;                                           
+     if str='' then begin bbFilterZsktv.Enabled:=false; lFilterZsktv.Caption:=c_noZ_ktv; lFilterZsktv.Color:=clYellow; end
+               else begin bbFilterZsktv.Glyph:=bb2.Glyph; lFilterZsktv.Caption:=c_back_ZList; isfilter_sktv:=true; end;                                         
+  end
+  else begin
+     i:=0;                 
+     while i<length(arAllZ) do begin                                                                
+       clbZsktv.Items.Add(arAllZ[i]);
+       i:=i+1;                       
+     end;
+     bbFilterZsktv.Glyph:=bb1.Glyph; lFilterZsktv.Caption:=txt_lFilterZ_sktv;                        
+     isfilter_sktv:=false;                       
+  end;            
+end;
+{*** если в списке есть выбранные, кнопка становится доступной ***}                   
+procedure clbZsktvOnClick(Sender: TfrxComponent);
+var i,cnt : Integer;                                     
+begin
+  i:=0; cnt:=0;              
+  while i<clbZsktv.Items.Count do begin                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+    if clbZsktv.Checked(i) then cnt:=cnt+1;                                                                                 
+    i:=i+1;                    
+  end;
+  if cnt>0 then bSKTVViborIzZ.Enabled:=true else bSKTVViborIzZ.Enabled:=false;                                                                                               
+end;
+{*** при нажатии на кнопку "выбрать данные" из выбраных заявлений берутся данные ***}
+//адреса МПУ, подсчитывается кол-во услуг СКТВ и сумма разового платежа за одну услугу в рублях. Ежемесячный платёж забит константой, он всегда один и тот же.                                                                                                                                                                                                                                                                                                                                             
+procedure bSKTVViborIzZOnClick(Sender: TfrxComponent);
+var i,cnt : integer;                                   
+begin
+  selected_sktv:=true;                                                                      
+  i:=0; cnt:=0;                                                         
+  while i<clbZsktv.Items.Count do begin
+    if clbZsktv.Checked(i) then begin
+       Z.KeyValue:=clbZsktv.Items.Strings(i);                                                           
+       SetFilter('Листы заявления','SVC_ID=10394');
+       qOL.First;
+       while not qOL.eof do begin
+         if mSKTVAdrs.Lines.Text<>'' then mSKTVAdrs.Lines.Text:=mSKTVAdrs.Lines.Text+'; ';
+         mSKTVAdrs.Lines.Text:=mSKTVAdrs.Lines.Text+trim(<Содержание листа."МПУ услуги">);
+         if cnt=0 then eSKTVEdvrem.Text:=<Содержание листа."Сумма">/100;                                                                           
+         cnt:=cnt+1;                                 
+         qOL.Next;                                                
+       end;                 
+       SetFilter('Листы заявления','');
+    end;                 
+    i:=i+1;              
+  end;                                           
+  eSKTVKolvo.Text:=IntToStr(cnt);                            
+end;
+{*** при закрытии окна меняется подсветка кнопки ***}        
+procedure dpSKTVOnHide(Sender: TfrxComponent);
+var i : Integer;                                             
+begin
+  if selected_sktv then pnlSKTV.Color:=c_color5 else pnlSKTV.Color:=c_color1;                                                                                
+end;
+{*** рассчёт сумм для вывода в бланк ***}                         
+procedure MasterData17OnBeforePrint(Sender: TfrxComponent);
+begin
+  if trim(eSKTVKolvo.Text)<>'' then begin       //если есть кол-во и                                                                                
+     if trim(eSKTVEdvrem.Text)<>'' then begin     //единовременный платёж                                                            
+        СКТВ_едврем_сум:=StrToFloat(eSKTVKolvo.Text)*StrToFloat(eSKTVEdvrem.Text);     //рассчитываем суммы для единовременного платежа                                                                                                                   
+        СКТВ_едврем_сум_с_НДС:=СКТВ_едврем_сум*1.18;    
+        СКТВ_едврем_НДС:=СКТВ_едврем_сум_с_НДС-СКТВ_едврем_сум;            
+     end 
+     else begin СКТВ_едврем_сум:=0; СКТВ_едврем_сум_с_НДС:=0; СКТВ_едврем_НДС:=0; end; //иначе, если ед.врем.плат. не заполнен, то суммы будут пустыми.                                                                                                                                           
+     if trim(eSKTVEzhemes.Text)<>'' then begin    //ежемесячный платёж                                                           
+        СКТВ_ежемес_сум:=StrToFloat(eSKTVKolvo.Text)*StrToFloat(eSKTVEzhemes.Text);    //рассчитываем его суммы                                                                      
+        СКТВ_ежемес_сум_с_НДС:=СКТВ_ежемес_сум*1.18;    
+        СКТВ_ежемес_НДС:=СКТВ_ежемес_сум_с_НДС-СКТВ_ежемес_сум;
+     end
+     else begin СКТВ_ежемес_сум:=0; СКТВ_ежемес_сум_с_НДС:=0; СКТВ_ежемес_НДС:=0; end; //иначе - пустые                                                                    
+  end
+  else begin СКТВ_едврем_сум:=0; СКТВ_едврем_сум_с_НДС:=0; СКТВ_едврем_НДС:=0; СКТВ_ежемес_сум:=0; СКТВ_ежемес_сум_с_НДС:=0; СКТВ_ежемес_НДС:=0; end; //если колва нет, то все суммы пустые                                                                                                       
+end;
+
+begin
+   SetFilter('Листы заявления','ID_CELL_SVC IN (-11006,-109,-10501,-105)');
+     
+   fmMain.Caption:='РТК.БЮЛ.К - Контракт об оказании услуг электросвязи юридическому лицу, финансируемому из соответствующего бюджета';
+   ePhoneBill.Text:=<СП Абонента."Тлф.спр.расчет ЮЛ">;        
+   ePhoneCBR.Text:='065'; //<СП Абонента."Тлф.бюро ремонта">;       
+   cOperName.KeyValue:=<Оператор ПЭВМ."ИД оператора">;
+   cOperLico.KeyValue:=<Договор от имени."Код">;     
+   eAbonName.Text:=<Абонент."Юр. наименование">;       
+     
+   mOperLicoOsnova.Lines[0]:=<Договор от имени."Наименование">;         
+   DateEdit2.Date:=Date;      
+   DateEdit3.Date:=<Абонент."Дата договора">;
+   deDoPosleZakl.Date:=<Абонент."Дата договора">;
+     
+   if (<Договоры абонента."Дата окончания">=0)then                 
+     DateEdit4.Date:=Date  
+     else DateEdit4.Date:=<Договоры абонента."Дата окончания">;                            
+
+   номер_договора:='________';
+   дата_заключения_догов:='"___" _______ 20__';
+   дата_вступ_догов:='"___" _______ 20__';       
+   дата_договора_действ:='______________________';
+   вид_бюджета:='____________________________';
+
+   наим_абонента:='_______________________________________';
+   оператор_в_лице_основание:='______________________________________________________________________________';
+   абонент_в_лице:='_______________________________________';
+   абонент_основание:='_______________________________________';         
+
+   абонент_адрес:='____________________________________________';
+   абонент_юр_адрес:='____________________________________________';  
+   абонент_гос_рег:='__________________________________________________________________________________________________________________________________';
+   абонент_сп_адрес:='__________________________________';            
+   абонент_инн:='_______________';      
+   абонент_кпп:='_______________';      
+   абонент_банк_наимен:='_________________________________________________________________';  
+   абонент_банк_рс:='_________________________';    
+   абонент_банк_кс:='_________________________';    
+   абонент_банк_бик:='_____________';    
+     
+   филиал_наимен:='_________________________________';
+   филиал_адрес:='___________________________________________';
+   филиал_юр_адрес:='191002, г. Санкт-Петербург, ул. Достоевского, дом 15';       
+   филиал_тел:='_______________';
+   филиал_факс:='_______________';       
+   филиал_инн:='_______________';              
+   филиал_кпп:='_______________';               
+   филиал_банк_наимен:='____________________________________________________';  
+   филиал_банк_бик:='_____________';
+
+   qZ:=Report.GetDataset('Заявления абонента');
+   qOL:=Report.GetDataset('Листы заявления');
+   qPU:=Report.GetDataset('Постоянные услуги абонента');
+   qAK:=Report.GetDataset('Детализация аренды каналов');
+   qSAO:=Report.GetDataset('Справочник (Активное оборудование)');             
+end.
