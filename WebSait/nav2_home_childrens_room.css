@@ -1,0 +1,11 @@
+.hand {cursor:hand; cursor:pointer;}
+#p_table {width:745px; margin-top:20px;}
+#p_table p {line-height:1.1;}
+.p_bl_22o {font:22px/1 VS,Arial,Tahoma; color:#e89d25;}
+.p_bl_19b {font:19px/1 PH,Arial,Tahoma;}
+#p_tab1 {width:725px; height:427px; background-color:#ffffff;}
+#p_tab2 {width:725px; height:181px; background-color:#ffffff;}
+#p_tab3 {width:485px; height:230px; background-color:#ffffff;}
+#p_table_filling {width:725px; margin-top:30px; margin-left:10px;}
+ #p_tf_th {height:25px; background-color:#78cf65; text-align:center; vertical-align:middle; border-top-left-radius:10px; -webkit-border-top-left-radius:10px; border-top-right-radius:10px; -webkit-border-top-right-radius:10px; font:15px PH,Arial,Tahoma; color:#ffff4b; letter-spacing:1px;}
+ #p_tf_td {background-color:#bfffb0; font:14px/1 PH,Arial,Tahoma; padding:5px 8px 6px 8px; text-align:justify; border-bottom-left-radius:10px; -webkit-border-bottom-left-radius:10px; border-bottom-right-radius:10px; -webkit-border-bottom-right-radius:10px;}

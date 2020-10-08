@@ -1,0 +1,1 @@
+<table align=\'left\' valign=\'top\' id=\'p_tab_modal\' cellspacing=0 cellpadding=0 class=\'i_width100\'><tr><td id=\'i_tm_d\'><div id=\'i_img_big_conteiner\'>&nbsp;</div><img src=\'img/x.png\' id=\'imwf_winclose\'><img src=\'img/xr.png\' id=\'imwf_winprevfoto\'><img src=\'img/xl.png\' id=\'imwf_winnextfoto\'></td></tr></table>

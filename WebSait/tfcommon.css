@@ -1,0 +1,83 @@
+/*ПОДГОТОВКА - подключение и т.п.*/
+* { margin:0; padding:0; line-height:0; border:0; /*везде обнулены отступы и рамки, рамки засунуты внутрь -      */
+   -webkit-border-top:none; -webkit-border-right:none; -webkit-border-bottom:none; -webkit-border-left:none;
+   -webkit-box-sizing:border-box;                 /* - объявлены частями своих контейнеров, а не как доп. внешние*/
+   -moz-box-sizing:border-box;
+    box-sizing:border-box; }   /*ниже все новые элементы объявлены как блочные, а не строчные (1-н под другим)*/
+header,section,footer,aside,nav,article,figure,figcaption,hgroup { display:block; }
+/*@font-face { font-family: "F"; src: url("/fonts/F.ttf");}/*BadScriptR.ttf"); }*//*- для просмотра шрифта*/
+/*ниже - правильный способ подключения шрифтов распознаваемый большенством барадатеров, шрифты и код 
+  сгенерированны белкой (https://www.fontsquirrel.com/tools/webfont-generator) из 1-го шрифта .ttf*/
+@font-face {
+    font-family: 'KR';
+    src: url('/fonts/KuraleR.eot');
+    src: url('/fonts/KuraleR.eot?#iefix') format('embedded-opentype'),
+         url('/fonts/KuraleR.woff2') format('woff2'),
+         url('/fonts/KuraleR.woff') format('woff'),
+         url('/fonts/KuraleR.ttf') format('truetype'),
+         url('/fonts/KuraleR.svg#kuraleregular') format('svg');
+    font-weight:normal;
+    font-style:normal; }
+@font-face {
+    font-family: 'AS';
+    src: url('/fonts/asessor.eot');
+    src: url('/fonts/asessor.eot?#iefix') format('embedded-opentype'),
+         url('/fonts/asessor.woff2') format('woff2'),
+         url('/fonts/asessor.woff') format('woff'),
+         url('/fonts/asessor.ttf') format('truetype'),
+         url('/fonts/asessor.svg#asessorregular') format('svg');
+    font-weight:normal;
+    font-style:normal; }
+@font-face {
+    font-family: 'VS';
+    src: url('/fonts/vesna.eot');
+    src: url('/fonts/vesna.eot?#iefix') format('embedded-opentype'),
+         url('/fonts/vesna.woff2') format('woff2'),
+         url('/fonts/vesna.woff') format('woff'),
+         url('/fonts/vesna.ttf') format('truetype'),
+         url('/fonts/vesna.svg#vesnaregular') format('svg');
+    font-weight:normal;
+    font-style:normal; }
+@font-face { font-family: "PH"; src: url("/fonts/philosopherI.ttf");} /*подключаю просто как .ttf, потому что так этот шрифт выглядит намного лучше во всех эксплорерах*/
+	
+/*скрытые данные*/
+#hidden_data {width:0px; height:0px; display:hidden;}
+
+/*ОБЩИЕ классы для разных элементов*/
+.i_anytext {font:14px/1.1 PH,Verdana,Arial;}
+.i_nbsp0 { font-size:25%; }
+.i_nbsp1 { font-size:50%; }
+.i_nbsp2 { font-size:75%; }
+.i_nbsp_min { font-size:1px; }
+.i_title_link {color:#8364d2;}
+.i_title_link:hover {text-decoration:underline; cursor:help;}
+.i_width100 {width:100%;}
+
+/*ОСНОВНОЕ ОПИСАНИЕ*/
+body { background:#fedeae; background-image:url("/img/img_index/fon.jpg"); background-repeat:repeat; }
+#i_wrapper { width:982px; min-width:982px; height:100%; margin:0px auto; text-align:left; }
+/*Описание заголовка*/
+ #i_main_header { width:982px; height:300px; max-height:224px; display:table; border:10px solid #ffd191; border-radius:10px; -webkit-border-radius:10px; border-image:url("/img/img_index/ramka_fon_orange_header.gif") 10 repeat; -webkit-border-image:url("/img/img_index/ramka_fon_orange_header.gif") 10 repeat; } /*ниже как таблица #h_content из 2 ячеек: #hc_picture (картинка) и #hc_other (всё остальное)*/
+  #i_h_picture { width:298px; height:148px; display:table-cell; vertical-align:top; }
+   #i_h_pic { vertical-align:top; }
+  #i_h_wall { width:6px; height:100%; display:table-cell; background:#ffd191; background-image:url("/img/img_index/ramka_fon_orange_small.gif"); background-repeat:repeat; }
+  #i_h_up { width:658px; min-width:532px; height:139px; display:table-cell; background:#cfeff5; float:left;}
+   #i_img_baloon_tf:hover {cursor:hand; cursor:pointer;}
+  #i_h_down { width:658px; min-width:532px; height:85px; display:table-cell; background:#e3bd88; float:left;}
+   #i_hd_table { width:100%; height:100%; } /*таблица внутри #hc_other - в ней весь контент заголовочной чати*/
+     /*главная навигация - разделы сайта - 8 кнопок из 2-х строк*/
+	 #i_hd_tdnavs { vertical-align:middle; height:100%; position:relative; }
+     #i_nav1 li {display:inline-block; float:left; list-style:none; filter:grayscale(100%); -webkit-filter:grayscale(100%); transition:filter 0.3s ease; transition:-webkit-filter 0.3s ease; margin:0px 1px 0px 2px; }
+     #i_nav1 li:hover {filter:grayscale(0%); -webkit-filter:grayscale(0%); transition:filter 0.6s ease; transition:-webkit-filter 0.6s ease; cursor:hand; cursor:pointer; }
+	 #i_nav2 li {display:inline-block; float:left; list-style:none; filter:grayscale(100%); -webkit-filter:grayscale(100%); transition:filter 0.3s ease; transition:-webkit-filter 0.3s ease; margin:3px 1px 0px 2px; }
+     #i_nav2 li:hover {filter:grayscale(0%); -webkit-filter:grayscale(0%); transition:filter 0.6s ease; transition:-webkit-filter 0.6s ease; cursor:hand; cursor:pointer; }
+	 #i_hd_tdorg { vertical-align:middle; padding-right:1px; height:100%; position:relative;}
+	 #i_img_organizations {display:inline-block; float:left; list-style:none; filter:grayscale(100%); -webkit-filter:grayscale(100%); transition:filter 0.3s ease; transition:-webkit-filter 0.3s ease;}
+     #i_img_organizations:hover {filter:grayscale(0%); -webkit-filter:grayscale(0%); transition:filter 0.6s ease; transition:-webkit-filter 0.6s ease; cursor:hand; cursor:pointer; }
+     #i_img_7cvetik:hover ~ #i_img_organizations { filter:grayscale(0%); -webkit-filter:grayscale(0%); transition:filter 0.6s ease; transition:-webkit-filter 0.6s ease; }
+/*КОНЕЦ описания заголовка*/		
+ #i_inf_content { width:100%; height:400px; display:table; border-left:10px solid #ffd191; border-bottom:10px solid #ffd191; border-right:10px solid #ffd191; border-radius:10px; -webkit-border-radius:10px; border-image:url("/img/img_index/ramka_fon_orange_inf.gif") 10 repeat; -webkit-border-image:url("/img/img_index/ramka_fon_orange_inf.gif") 10 repeat; }
+  #i_inf_content_tr { display:table-row;}
+   #i_inf_main { width:786px; height:100%; display:table-cell; font:12px Verdana,Arial,Tahoma; padding:15px; background:#ffffd2; }
+   #i_inf_wall { width:6px; height:100%; display:table-cell; background:#ffd191; background-image:url("/img/img_index/ramka_fon_orange_small.gif"); background-repeat:repeat; }
+   #i_inf_aside { width:166px; height:100%; display:table-cell; background:#ffffba; padding-top:2px; vertical-align:top; }	

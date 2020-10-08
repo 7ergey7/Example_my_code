@@ -1,0 +1,8 @@
+/*оформление одной новости*/
+main article { width:100%; height:auto; padding-bottom:6px;}
+main article div:nth-child(1) { width:100%; font:11px/1.2 Verdana,Arial,Tahoma; color:#aaaaaa; } /*дата*/
+main article div:nth-child(2) { width:100%; font:bold 13px/1.2 PH,Verdana,Arial; margin-top:4px; margin-bottom:4px; }
+main article div:nth-child(3) { width:100%; font:13px/1.2 PH,Verdana,Arial; text-align:justify;}
+#p_back {font:italic 12px PH,Tahoma,Verdana; color:#8364d2;}
+#p_arrow {vertical-align:middle; padding-top:1px;}
+#p_back_txt:hover {cursor:hand; cursor:pointer; text-decoration:underline;}

@@ -1,0 +1,11 @@
+/*оформление для однотипных блоков новостей*/
+main article { width:100%; height:auto; border:1px solid #ffdfa7; border-radius:6px; -webkit-border-radius:6px; background:#fff0c1; margin-bottom:10px; padding:5px 7px 6px 7px; }
+main article div:nth-child(1) { width:100%; font:11px Verdana,Arial,Tahoma; }
+main article div:nth-child(1) span:nth-child(1) { color:#aaaaaa; } /*цвет даты*/
+main article div:nth-child(2) { width:100%; font:bold 13px/1.2 PH,Verdana,Arial; margin-top:5px; margin-bottom:1px; }
+main article div:nth-child(2) span:hover { cursor:hand; cursor:pointer; color:#666666; } /*щелчёк по заголовку - переход к просмотру данной новости*/
+main article div:nth-child(3) { width:100%; font:13px/1.2 PH,Verdana,Arial; }
+/*оформление номеров листов*/
+#news_lists { font:bold 11px Verdana,Arial,Tahoma; margin:0px auto; margin-top:15px; }
+#news_lists td { text-align:center; vertical-align:middle; border:1px solid #999999; border-radius:13px; -webkit-border-radius:13px; }
+#news_lists td:hover { cursor:hand; cursor:pointer; }

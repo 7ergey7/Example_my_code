@@ -1,0 +1,12 @@
+/*для окна загрузки фото*/
+#i_blockscreen_for_foto, #i_modalwindow_for_foto {position:fixed;}
+#i_blockscreen_for_foto {background:rgba(0,0,0,.5); left:0; right:0; top:0; bottom:0; z-index:10;}
+#i_modalwindow_for_foto {background:#f8fbd7; border:1px solid #be8440; box-shadow:0 0 10px #444; z-index:11;}
+#i_tm_d {position:relative;}
+#i_img_big_conteiner {z-index:12;}
+#imwf_winclose {position:absolute; z-index:13;}
+#imwf_winclose:hover {cursor:hand; cursor:pointer;}
+#imwf_winprevfoto {position:absolute; z-index:13;}
+#imwf_winprevfoto:hover {cursor:hand; cursor:pointer;}
+#imwf_winnextfoto {position:absolute; z-index:13;}
+#imwf_winnextfoto:hover {cursor:hand; cursor:pointer;}
